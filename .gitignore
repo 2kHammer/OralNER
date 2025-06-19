@@ -1,0 +1,52 @@
+.vscode/
+# ----------------------------------------------
+# Frontend - zunächst komplett ignorieren
+frontend/
+
+# ----------------------------------------------
+# Backend
+backend/.venv/
+backend/app/store/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtuelle Environments (falls nicht schon global ignoriert)
+.venv/
+venv/
+env/
+backend/.venv/  # Falls dein venv im backend liegt, sonst entsprechend anpassen
+
+# Flask instance folder (falls du sowas benutzt)
+instance/
+
+# Logfiles
+*.log
+
+# Werkzeug debug files
+*.pyc
+*.pyo
+
+# IDE-spezifisch (VSCode)
+.vscode/
+
+# macOS
+.DS_Store
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Wenn du Datenbankdateien lokal hast (SQLite z.B.)
+*.sqlite3
+
+# Dateien mit sensiblen Daten oder Secrets
+.env
