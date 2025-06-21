@@ -1,3 +1,5 @@
 spacy
 spacy[transformers]
+datasets
+seqeval
 Flask

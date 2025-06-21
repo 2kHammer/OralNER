@@ -14,6 +14,7 @@ class HuggingFaceFramework(Framework):
         self.ner_model = model
         self.model = AutoModelForTokenClassification.from_pretrained(model.storage_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model.storage_path)
+        print("Model is loaded")
         
     def apply_ner(self, text):
         nlp = pipeline("ner",model=self.model,tokenizer=self.tokenizer, aggregation_strategy="simple")

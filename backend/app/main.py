@@ -4,22 +4,30 @@ from model.ner_model_provider.ner_model import NERModel
 from model.framework_provider.huggingface_framework import HuggingFaceFramework
 from model.data_provider.data_registry import DataRegistry
 
-def test_run(): 
-    trainingsdata_path = "backend/app/store/Trainingsdata/"
-    traingsdata_name = "adg0016.csv"
+def run_test():
+    trainingsdata_path = "app/store/Trainingsdata/"
+    traingsdata_name = "adg1220.csv"
     model_name = "mschiesser/ner-bert-german"
     model_name_save = "mschiesser_ner-bert-german"
-    path_to_save = "backend/app/store/NER-Models/base/"
+    path_to_save = "app/store/NER-Models/base/"
 
     test_model = NERModel(1,model_name,"huggingface",model_name,path_to_save+model_name_save)
     model_registry = ModelRegistry(test_model)
     hf = HuggingFaceFramework()
     data_registry = DataRegistry()
-    
-    data_registry.loadTrainingData(trainingsdata_path+traingsdata_name)
+
     #hf.load_model(model_registry.current_model)
+    data_registry.loadTrainingData(trainingsdata_path+traingsdata_name)
     #text = "Angela Merkel war Bundeskanzlerin in Deutschland."
     #hf.apply_ner(text)
+
+    #app = Flask(__name__)
+
+    #@app.route('/')
+    #def home():
+    #    return "Hallo von Flask in main.py!"
+
+
 # Lade das deutsche Modell
 #model_name = "mschiesser/ner-bert-german"
 #model_name_save = "mschiesser_ner-bert-german"
@@ -46,11 +54,8 @@ def test_run():
 #nlp.to_bytes().to_file("store/ner")
 
 
-app = Flask(__name__)
-@app.route('/')
-def home():
-    return "Hallo von Flask in main.py!"
+# muss das Modell laden für NLP: python -m spacy download en_core_web_sm
 
 if __name__ == '__main__':
-    test_run()
+    run_test()
     #app.run(debug=True)
