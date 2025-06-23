@@ -8,3 +8,7 @@ class Framework(ABC):
     @abstractmethod
     def apply_ner(self, text):
         pass
+
+    @abstractmethod
+    def prepare_training_data(self,rows):
+        pass

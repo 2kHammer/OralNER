@@ -6,7 +6,8 @@ from model.data_provider.data_registry import DataRegistry
 
 def run_test():
     trainingsdata_path = "app/store/Trainingsdata/"
-    traingsdata_name = "adg1220.csv"
+    trainingsdata_converted_path = "app/store/Trainingsdata/Converted/"
+    trainingsdata_name = "adg2983.csv"
     model_name = "mschiesser/ner-bert-german"
     model_name_save = "mschiesser_ner-bert-german"
     path_to_save = "app/store/NER-Models/base/"
@@ -16,8 +17,10 @@ def run_test():
     hf = HuggingFaceFramework()
     data_registry = DataRegistry()
 
-    #hf.load_model(model_registry.current_model)
-    data_registry.loadTrainingData(trainingsdata_path+traingsdata_name)
+    hf.load_model(model_registry.current_model)
+    #data_registry.saveTrainingData(trainingsdata_path+trainingsdata_name)
+    rows = data_registry.loadTrainingData((trainingsdata_converted_path+trainingsdata_name).replace(".csv",".json"))
+    hf.prepare_training_data(rows)
     #text = "Angela Merkel war Bundeskanzlerin in Deutschland."
     #hf.apply_ner(text)
 

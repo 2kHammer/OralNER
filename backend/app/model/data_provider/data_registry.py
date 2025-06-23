@@ -9,6 +9,7 @@ from datasets import load_dataset
 
 @dataclass
 class ADGRow:
+    idx: int
     unextracted: str
     num: int
     timestamp: str
@@ -42,18 +43,26 @@ class DataRegistry:
 
 
     def loadTrainingData(self,path):
+        rows = self._load_rows_as_json(path)
+        return rows
+
+    # works mit Path for now, has to be changed to file later
+    def saveTrainingData(self,path):
         nlp = spacy.load("app/store/NER-Models/base/NLP/de_core_news_sm")
         with open(path, newline='', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile,delimiter=';')
             rows = []
+            idx = 1
             for row in reader:
                 if len(row) > 0:
-                    rows.append(self._extract_ADG_row(row, nlp))
+                    rows.append(self._extract_ADG_row(row, nlp,idx))
+                    idx += 1
             write_path = path.replace("Trainingsdata/","Trainingsdata/Converted/").replace(".csv",".json")
-            self.save_rows_as_json(rows,write_path)
+            self._save_rows_as_json(rows,write_path)
 
 
-    def _extract_ADG_row(self,row, nlp):
+    # check the format of the data und try to make it better - if I have time
+    def _extract_ADG_row(self,row, nlp,idx):
         """Return the ADGRow from a row
         If a annotated entity doesn't match to words or its only the type -> ist in else
         Arguments:
@@ -63,7 +72,6 @@ class DataRegistry:
 
         # extract general infos from text
         full_row = "".join(row)
-        #print(full_row)
         first_column = row[0].split("\t")
         first_column.extend(row[1:])
         number = first_column.pop(0)
@@ -122,21 +130,30 @@ class DataRegistry:
                 for occurance in ent["indexes"]:
                     try:
                         startindex = occurance[0]
-                        index_labels = startindex_tokens.index(startindex)
-                        labels[index_labels] = "B-"+ent["typ"]
-                        entity_tokens = nlp.tokenizer(ent["entity_text"])
-                        len_entity = len(entity_tokens)
-                        for i in range(1,len_entity):
-                            index_labels += 1
-                            labels[index_labels] = "I-"+ent["typ"]
+                        # check if startindex of the entity is a complete token
+                        if startindex in startindex_tokens:
+                            index_labels = startindex_tokens.index(startindex)
+                            labels[index_labels] = "B-"+ent["typ"]
+                            entity_tokens = nlp.tokenizer(ent["entity_text"])
+                            len_entity = len(entity_tokens)
+                            for i in range(1,len_entity):
+                                index_labels += 1
+                                labels[index_labels] = "I-"+ent["typ"]
                     except:
-                        print("incostency in: "+full_row)
+                        print("incostency in " +str(idx)+": "+full_row)
                         return None
 
-        return ADGRow(full_row,number,ts,speaker,text,tokens,labels,entities_with_positions,other)
+        return ADGRow(idx,full_row,number,ts,speaker,text,tokens,labels,entities_with_positions,other)
 
-    def save_rows_as_json(self, rows,path):
-        rows_dicts = [asdict(row) for row in rows]
+    def _save_rows_as_json(self, rows,path):
+        rows_dicts = []
+        for row in rows:
+            rows_dicts.append(asdict(row))
 
         with open(path, "w", encoding="utf-8") as f:
             json.dump(rows_dicts, f, indent=4, ensure_ascii=False)
+
+    def _load_rows_as_json(self, path):
+        with open(path, "r", encoding="utf-8") as f:
+            rows_dicts = json.load(f)
+        return [ADGRow(**row_dict) for row_dict in rows_dicts]
