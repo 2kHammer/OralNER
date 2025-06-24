@@ -1,8 +1,10 @@
 from lib2to3.btm_utils import tokens
 
 from .framework import Framework
-from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
-from datasets import Dataset
+from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline, DataCollatorForTokenClassification, TrainingArguments, Trainer
+from datasets import Dataset, DatasetDict
+import evaluate
+import numpy as np
 
 from ..data_provider.data_registry import ADGRow
 from ..ner_model_provider.ner_model import NERModel
@@ -25,31 +27,73 @@ class HuggingFaceFramework(Framework):
         nlp = pipeline("ner",model=self.model,tokenizer=self.tokenizer, aggregation_strategy="simple")
         print(nlp(text))
 
-    def prepare_training_data(self, rows):
+    def prepare_training_data(self, rows, train_size=0.7, validation_size=0.1, test_size=0.2):
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
 
+        # trainingsdaten auf sätze umstellen
+
+        # vielleicht später noch auf ein globales Dictionary umändern
         # sort the labels or insert all, if time
         all_labels = list(set(label for row in rows for label in row.labels))
         label_id = {label: i for i, label in enumerate(all_labels)}
-        id_label = {i: label for i, label in enumerate(all_labels)}
-        print(len(rows))
         data = Dataset.from_list([{"tokens":row.tokens,"labels":[label_id[label] for label in row.labels]} for row in rows[1:]])
-        print(data)
+        # read full data
         tokenized_data = data.map(self._tokenize_and_align_labels, batched=True)
-        print(tokenized_data)
-        '''
-        testid = 29
-        label_ids =[label_id[label] for label in rows[testid].labels]
-        print(len(label_ids))
 
-        inputs = self.tokenizer(rows[testid].tokens, is_split_into_words=True)
-        words_ids =inputs.word_ids()
-        print(len(rows[testid].tokens))
-        print(len(words_ids))
-        new_labels = self._align_labels_with_tokens(label_ids, words_ids)
-        print(new_labels)
-        '''
+        # wird validation überhaupt benötigt?
+        split_test = tokenized_data.train_test_split(test_size=test_size, seed=42)
+        test_data = split_test["test"]
+        train_data = split_test["train"]
+
+        split_validation = train_data.train_test_split(test_size=validation_size/(1-test_size), seed=42)
+        validation_data = split_validation["test"]
+        train_data = split_validation["train"]
+
+        dataset_dict = DatasetDict({"train":train_data, "validation":validation_data, "test":test_data})
+        return dataset_dict, label_id
+
+    def finetune_ner_model(self,base_model_path,data_dict, label_id, name,new_model_path):
+        id_label = {value: key for key, value in label_id.items()}
+        sorted_label_id = dict(sorted(label_id.items(), key=lambda item: item[1]))
+        list_labels = list(sorted_label_id.keys())
+
+        # wird über Path angeben
+        tokenizer = AutoTokenizer.from_pretrained(base_model_path)
+        model = AutoModelForTokenClassification.from_pretrained(base_model_path,num_labels=len(list_labels),id2label=id_label, label2id=label_id,ignore_mismatched_sizes=True)
+        # ausgliedern in JSON-Datei
+        print(new_model_path+name)
+        training_args = TrainingArguments(
+            output_dir=new_model_path+name,
+            evaluation_strategy="epoch",
+            save_strategy="epoch",
+            save_total_limit=1,
+            learning_rate=2e-5,
+            per_device_train_batch_size=4,
+            per_device_eval_batch_size=4,
+            num_train_epochs=3,
+            weight_decay=0.01,
+            load_best_model_at_end=True,
+            metric_for_best_model="f1",
+        )
+
+        data_collator = DataCollatorForTokenClassification(tokenizer=self.tokenizer)
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=data_dict["train"],
+            eval_dataset=data_dict["test"],
+            processing_class=tokenizer,
+            data_collator=data_collator,
+            compute_metrics=lambda p: self.compute_metrics(p, list_labels),
+        )
+
+        trainer.train()
+        metrics = trainer.evaluate()
+        #Metriken und die Trainingsargumente speichern
+
+        print("Training done")
+
 
     #https: // huggingface.co / docs / transformers / tasks / token_classification
     def _tokenize_and_align_labels(self, statement):
@@ -94,4 +138,25 @@ class HuggingFaceFramework(Framework):
                 new_labels.append(label)
 
         return new_labels
-        
+
+    def compute_metrics(self,p, label_list):
+        seqeval = evaluate.load("seqeval")
+        predictions, labels = p
+        predictions = np.argmax(predictions, axis=2)
+
+        true_predictions = [
+            [label_list[p] for (p, l) in zip(prediction, label) if l != -100]
+            for prediction, label in zip(predictions, labels)
+        ]
+        true_labels = [
+            [label_list[l] for (p, l) in zip(prediction, label) if l != -100]
+            for prediction, label in zip(predictions, labels)
+        ]
+
+        results = seqeval.compute(predictions=true_predictions, references=true_labels)
+        return {
+            "precision": results["overall_precision"],
+            "recall": results["overall_recall"],
+            "f1": results["overall_f1"],
+            "accuracy": results["overall_accuracy"],
+        }

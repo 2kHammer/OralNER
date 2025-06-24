@@ -5,24 +5,39 @@ from model.framework_provider.huggingface_framework import HuggingFaceFramework
 from model.data_provider.data_registry import DataRegistry
 
 def run_test():
-    trainingsdata_path = "app/store/Trainingsdata/"
-    trainingsdata_converted_path = "app/store/Trainingsdata/Converted/"
+    store_path = "app/store/"
+    trainingsdata_path = store_path+"Trainingsdata/"
+    trainingsdata_converted_path = trainingsdata_path+ "Converted/"
     trainingsdata_name = "adg2983.csv"
     model_name = "mschiesser/ner-bert-german"
     model_name_save = "mschiesser_ner-bert-german"
-    path_to_save = "app/store/NER-Models/base/"
+    models_path = store_path+"NER-Models/"
+    base_models_path= models_path + "base/"
+    models_modified_path = models_path +"modified/"
+    first_modiefied_model = models_modified_path +"ner-first-ty/checkpoint-138/"
+    path_model_metadata = models_path+"models_metadata.json"
 
-    test_model = NERModel(1,model_name,"huggingface",model_name,path_to_save+model_name_save)
-    model_registry = ModelRegistry(test_model)
+    test_model = NERModel(True,model_name,"huggingface",model_name,base_models_path+model_name)
+    model_registry = ModelRegistry(test_model,path_model_metadata)
+    model_registry.add_model(test_model)
+
+    ''' apply NER Model
     hf = HuggingFaceFramework()
     data_registry = DataRegistry()
-
     hf.load_model(model_registry.current_model)
+    test_data = "Wir sind, die erste Station war, glaub ich, Magolsheim, hieß es, genau. Das ist hinten bei Ulm, so Leipheim, Biberach, Magolsheim.  Kleines, verschlafenes Dörfchen. Da sagt sich Fuchs und Hase, ""Grüß Gott und guten Morgen"" natürlich [lacht]. Und ja, dort, äh  die ersten Tage so Kindergarten schnell dran gewöhnt. Und irgendwann (mal?) hat ja auch alles Spaß gemacht. Und wir hatten ein riesen Bauernhaus noch und ganz viele Kammern da drin und Räume dadrin. Und jeden Tag konntest du da was anderes entdecken, und ja, war schön, muss ich sagen, also so das erste Jahr."
+    hf.apply_ner(test_data)
+    '''
+
+    # Trainingsdaten speichern
     #data_registry.saveTrainingData(trainingsdata_path+trainingsdata_name)
-    rows = data_registry.loadTrainingData((trainingsdata_converted_path+trainingsdata_name).replace(".csv",".json"))
-    hf.prepare_training_data(rows)
-    #text = "Angela Merkel war Bundeskanzlerin in Deutschland."
-    #hf.apply_ner(text)
+
+    # Modell feinanpassen
+    #rows = data_registry.loadTrainingData((trainingsdata_converted_path+trainingsdata_name).replace(".csv",".json"))
+    #data, labelid = hf.prepare_training_data(rows)
+    #hf.finetune_ner_model(base_models_path+model_name_save,data,labelid,"ner-first-ty",models_modified_path)
+
+
 
     #app = Flask(__name__)
 

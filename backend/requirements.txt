@@ -1,5 +1,7 @@
 spacy
-spacy[transformers]
+transformers
+torch
+accelerate
 datasets
-seqeval
+evaluate
 Flask
