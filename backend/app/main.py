@@ -1,4 +1,6 @@
 from flask import Flask
+
+from app.model.framework_provider.framework import FrameworkNames
 from model.ner_model_provider.model_registry import ModelRegistry
 from model.ner_model_provider.ner_model import NERModel
 from model.framework_provider.huggingface_framework import HuggingFaceFramework
@@ -8,7 +10,7 @@ def run_test():
     store_path = "app/store/"
     trainingsdata_path = store_path+"Trainingsdata/"
     trainingsdata_converted_path = trainingsdata_path+ "Converted/"
-    trainingsdata_name = "adg2983.csv"
+    trainingsdata_name = "adg1220.csv"
     model_name = "mschiesser/ner-bert-german"
     model_name_save = "mschiesser_ner-bert-german"
     models_path = store_path+"NER-Models/"
@@ -17,9 +19,12 @@ def run_test():
     first_modiefied_model = models_modified_path +"ner-first-ty/checkpoint-138/"
     path_model_metadata = models_path+"models_metadata.json"
 
-    test_model = NERModel(True,model_name,"huggingface",model_name,base_models_path+model_name)
-    model_registry = ModelRegistry(test_model,path_model_metadata)
-    model_registry.add_model(test_model)
+    #test_model = NERModel(1,model_name,FrameworkNames["HUGGINGFACE"],model_name,base_models_path+model_name)
+    model_registry = ModelRegistry(path_model_metadata,2)
+    '''
+    #model_registry.add_model(test_model)
+    model_registry.list_models()
+    '''
 
     ''' apply NER Model
     hf = HuggingFaceFramework()
@@ -33,9 +38,16 @@ def run_test():
     #data_registry.saveTrainingData(trainingsdata_path+trainingsdata_name)
 
     # Modell feinanpassen
-    #rows = data_registry.loadTrainingData((trainingsdata_converted_path+trainingsdata_name).replace(".csv",".json"))
-    #data, labelid = hf.prepare_training_data(rows)
-    #hf.finetune_ner_model(base_models_path+model_name_save,data,labelid,"ner-first-ty",models_modified_path)
+    new_model_name = "NER-Second-Try"
+    data_registry = DataRegistry()
+    hf = HuggingFaceFramework()
+    rows = data_registry.loadTrainingData((trainingsdata_converted_path+trainingsdata_name).replace(".csv",".json"))
+    #vielleicht das erstellen das models auch in Registry verstecken
+    modified_model_id = modified_model = NERModel(3, new_model_name, FrameworkNames["HUGGINGFACE"], model_name, models_modified_path + new_model_name)
+    model_registry.add_model(modified_model)
+    data, labelid = hf.prepare_training_data(rows,base_models_path+model_name_save)
+    results, args = hf.finetune_ner_model(base_models_path+model_name_save,data,labelid,new_model_name,models_modified_path)
+    model_registry.add_training(modified_model_id, trainingsdata_name, 2,results, args)
 
 
 

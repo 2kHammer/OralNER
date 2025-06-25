@@ -1,4 +1,10 @@
 from abc import ABC, abstractmethod
+from enum import Enum
+
+class FrameworkNames(Enum):
+    HUGGINGFACE = 1
+    FLAIR = 2
+    SPACY = 3
 
 class Framework(ABC):
     @abstractmethod

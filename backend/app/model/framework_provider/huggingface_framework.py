@@ -1,4 +1,5 @@
 from lib2to3.btm_utils import tokens
+import time
 
 from .framework import Framework
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline, DataCollatorForTokenClassification, TrainingArguments, Trainer
@@ -7,7 +8,9 @@ import evaluate
 import numpy as np
 
 from ..data_provider.data_registry import ADGRow
-from ..ner_model_provider.ner_model import NERModel
+from ..ner_model_provider.ner_model import NERModel, TrainingResults
+from app.utils.helpers import delete_checkpoints_folder
+
 
 class HuggingFaceFramework(Framework):
     def __init__(self):
@@ -27,7 +30,7 @@ class HuggingFaceFramework(Framework):
         nlp = pipeline("ner",model=self.model,tokenizer=self.tokenizer, aggregation_strategy="simple")
         print(nlp(text))
 
-    def prepare_training_data(self, rows, train_size=0.7, validation_size=0.1, test_size=0.2):
+    def prepare_training_data(self, rows, tokenizer_path, train_size=0.7, validation_size=0.1, test_size=0.2):
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
 
@@ -39,7 +42,7 @@ class HuggingFaceFramework(Framework):
         label_id = {label: i for i, label in enumerate(all_labels)}
         data = Dataset.from_list([{"tokens":row.tokens,"labels":[label_id[label] for label in row.labels]} for row in rows[1:]])
         # read full data
-        tokenized_data = data.map(self._tokenize_and_align_labels, batched=True)
+        tokenized_data = data.map(lambda x: self._tokenize_and_align_labels(x,tokenizer_path), batched=True)
 
         # wird validation überhaupt benötigt?
         split_test = tokenized_data.train_test_split(test_size=test_size, seed=42)
@@ -63,11 +66,14 @@ class HuggingFaceFramework(Framework):
         model = AutoModelForTokenClassification.from_pretrained(base_model_path,num_labels=len(list_labels),id2label=id_label, label2id=label_id,ignore_mismatched_sizes=True)
         # ausgliedern in JSON-Datei
         print(new_model_path+name)
+
+        # best modell is saved in directory as checkpoint-xx, then loaded in the trainer (load_best_model_at_the_end)
+        # -> überschreibt manuell das Verzeichnis
         training_args = TrainingArguments(
             output_dir=new_model_path+name,
             evaluation_strategy="epoch",
             save_strategy="epoch",
-            save_total_limit=1,
+            save_total_limit=3,
             learning_rate=2e-5,
             per_device_train_batch_size=4,
             per_device_eval_batch_size=4,
@@ -77,7 +83,7 @@ class HuggingFaceFramework(Framework):
             metric_for_best_model="f1",
         )
 
-        data_collator = DataCollatorForTokenClassification(tokenizer=self.tokenizer)
+        data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
         trainer = Trainer(
             model=model,
             args=training_args,
@@ -88,16 +94,23 @@ class HuggingFaceFramework(Framework):
             compute_metrics=lambda p: self.compute_metrics(p, list_labels),
         )
 
-        trainer.train()
+        start_time = time.time()
+        train_results =trainer.train()
+        end_time = time.time()
         metrics = trainer.evaluate()
-        #Metriken und die Trainingsargumente speichern
-
+        args = trainer.args.to_dict()
+        trainer.save_model(new_model_path+name)
+        delete_checkpoints_folder(new_model_path+name)
         print("Training done")
+        print("Runtime: " + str(train_results.metrics["train_runtime"]))
+        print(metrics)
+        return self._convert_metrics(metrics,end_time-start_time), args
 
 
     #https: // huggingface.co / docs / transformers / tasks / token_classification
-    def _tokenize_and_align_labels(self, statement):
-        tokenized_inputs = self.tokenizer(statement["tokens"], truncation=True, is_split_into_words=True)
+    def _tokenize_and_align_labels(self, statement, tokenizer_path):
+        model_tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+        tokenized_inputs = model_tokenizer(statement["tokens"], truncation=True, is_split_into_words=True)
 
         labels = []
         for i, label in enumerate(statement[f"labels"]):
@@ -160,3 +173,8 @@ class HuggingFaceFramework(Framework):
             "f1": results["overall_f1"],
             "accuracy": results["overall_accuracy"],
         }
+
+    # diese Funktion für alle Framework Klassen abstrakt machen
+    def _convert_metrics(self, metrics, duration):
+        print(duration)
+        return TrainingResults(f1=metrics["eval_f1"], recall=metrics["eval_recall"], precision=metrics["eval_precision"], duration=duration, accuracy=metrics["eval_accuracy"])
