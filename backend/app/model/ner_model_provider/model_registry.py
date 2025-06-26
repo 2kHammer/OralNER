@@ -1,6 +1,7 @@
 from .ner_model import NERModel, TrainingResults
 from app.utils.json_manager import JsonManager
 from app.utils.helpers import get_current_datetime
+from app.utils.config import MODEL_METADATA_PATH
 
 
 class ModelRegistry:
@@ -31,6 +32,14 @@ class ModelRegistry:
     def current_model(self):
         return self._current_model
 
+    def set_current_model(self,id):
+        index_model = self._get_index_model_id(id)
+        if index_model is not None:
+            self._current_model = self._models[index_model]
+            return True
+        else:
+            return False
+
     def add_model(self,model:NERModel):
         model.set_id(self._get_next_id())
         model.name = self._check_make_name_unique(model.name,get_current_datetime())
@@ -38,8 +47,8 @@ class ModelRegistry:
         self._udpate_metadata()
         return model.id
 
-    def add_training(self,model_id,dataset_name:str, dataset_id:int, metrics:TrainingResults, trainings_args: dict):
-        index_model = self._get_index_model_id(model_id)
+    def add_training(self,id,dataset_name:str, dataset_id:int, metrics:TrainingResults, trainings_args: dict):
+        index_model = self._get_index_model_id(id)
         # erhält None von inde_model
         model = self._models[index_model]
         model.set_state(2)
@@ -48,7 +57,15 @@ class ModelRegistry:
 
 
     def list_models(self):
-        print(self._models)
+        print(len(self._models))
+        return self._models
+
+    def list_model(self, id):
+        index = self._get_index_model_id(id)
+        if index is not None:
+            return self._models[index]
+        else:
+            return None
 
     def _udpate_metadata(self):
         self._json_manager.update_json([model.to_dict() for model in self._models])
@@ -76,3 +93,5 @@ class ModelRegistry:
             return new_name + str(date)
         else:
             return new_name
+
+model_registry = ModelRegistry(MODEL_METADATA_PATH,1)

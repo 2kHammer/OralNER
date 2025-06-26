@@ -74,7 +74,7 @@ class NERModel:
         )
 
         for training in d.get("trainings", []):
-            metrics = TrainingResults.from_dict(training["metrics"])
+            metrics = TrainingResults(**training["metrics"])
             trainings_args = training.get("trainings_args")
             model.append_training(
                 date=training["date"],

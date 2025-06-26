@@ -94,17 +94,14 @@ class HuggingFaceFramework(Framework):
             compute_metrics=lambda p: self.compute_metrics(p, list_labels),
         )
 
-        start_time = time.time()
         train_results =trainer.train()
-        end_time = time.time()
         metrics = trainer.evaluate()
         args = trainer.args.to_dict()
         trainer.save_model(new_model_path+name)
         delete_checkpoints_folder(new_model_path+name)
         print("Training done")
-        print("Runtime: " + str(train_results.metrics["train_runtime"]))
         print(metrics)
-        return self._convert_metrics(metrics,end_time-start_time), args
+        return self._convert_metrics(metrics,train_results.metrics["train_runtime"]), args
 
 
     #https: // huggingface.co / docs / transformers / tasks / token_classification

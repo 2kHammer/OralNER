@@ -1,26 +1,20 @@
 from flask import Flask
 
+from app.model.data_provider.data_registry import data_registry
+from app.model.ner_model_provider.model_registry import model_registry
+from app.utils.config import STORE_PATH, TRAININGSDATA_PATH
+from service.app_router import api
+
 from app.model.framework_provider.framework import FrameworkNames
 from model.ner_model_provider.model_registry import ModelRegistry
 from model.ner_model_provider.ner_model import NERModel
 from model.framework_provider.huggingface_framework import HuggingFaceFramework
-from model.data_provider.data_registry import DataRegistry
+from model.data_provider.data_registry import DataRegistry, data_registry
 
 def run_test():
-    store_path = "app/store/"
-    trainingsdata_path = store_path+"Trainingsdata/"
-    trainingsdata_converted_path = trainingsdata_path+ "Converted/"
-    trainingsdata_name = "adg1220.csv"
-    model_name = "mschiesser/ner-bert-german"
-    model_name_save = "mschiesser_ner-bert-german"
-    models_path = store_path+"NER-Models/"
-    base_models_path= models_path + "base/"
-    models_modified_path = models_path +"modified/"
-    first_modiefied_model = models_modified_path +"ner-first-ty/checkpoint-138/"
-    path_model_metadata = models_path+"models_metadata.json"
+    
 
     #test_model = NERModel(1,model_name,FrameworkNames["HUGGINGFACE"],model_name,base_models_path+model_name)
-    model_registry = ModelRegistry(path_model_metadata,2)
     '''
     #model_registry.add_model(test_model)
     model_registry.list_models()
@@ -38,25 +32,24 @@ def run_test():
     #data_registry.saveTrainingData(trainingsdata_path+trainingsdata_name)
 
     # Modell feinanpassen
-    new_model_name = "NER-Second-Try"
-    data_registry = DataRegistry()
-    hf = HuggingFaceFramework()
-    rows = data_registry.loadTrainingData((trainingsdata_converted_path+trainingsdata_name).replace(".csv",".json"))
+    #new_model_name = "NER-Second-Try"
+    #hf = HuggingFaceFramework()
+    #rows = data_registry.load_training_data((trainingsdata_converted_path + trainingsdata_name).replace(".csv", ".json"))
     #vielleicht das erstellen das models auch in Registry verstecken
-    modified_model_id = modified_model = NERModel(3, new_model_name, FrameworkNames["HUGGINGFACE"], model_name, models_modified_path + new_model_name)
-    model_registry.add_model(modified_model)
-    data, labelid = hf.prepare_training_data(rows,base_models_path+model_name_save)
-    results, args = hf.finetune_ner_model(base_models_path+model_name_save,data,labelid,new_model_name,models_modified_path)
-    model_registry.add_training(modified_model_id, trainingsdata_name, 2,results, args)
+    #modified_model = NERModel(3, new_model_name, FrameworkNames["HUGGINGFACE"], model_name, models_modified_path + new_model_name)
+    #modified_model_id = model_registry.add_model(modified_model)
+    #data, labelid = hf.prepare_training_data(rows,base_models_path+model_name_save)
+    #results, args = hf.finetune_ner_model(base_models_path+model_name_save,data,labelid,new_model_name,models_modified_path)
+    #model_registry.add_training(modified_model_id, trainingsdata_name, 2,results, args)
+
+    hf = HuggingFaceFramework()
+    rows = data_registry.load_training_data(3)
+    test_obj = rows[123]
+    hf.load_model(model_registry.current_model)
 
 
 
     #app = Flask(__name__)
-
-    #@app.route('/')
-    #def home():
-    #    return "Hallo von Flask in main.py!"
-
 
 # Lade das deutsche Modell
 #model_name = "mschiesser/ner-bert-german"
@@ -67,25 +60,9 @@ def run_test():
 #tokenizer.save_pretrained(path_to_save + model_name_save)
 #model.save_pretrained(path_to_save + model_name_save)
 
-
-#Anwenden des deutschen Modells
-#token = AutoTokenizer.from_pretrained(path_to_save + model_name_save)
-#model = AutoModelForTokenClassification.from_pretrained(path_to_save+ model_name_save)
-
-#nlp = pipeline("ner",model=model,tokenizer=token, aggregation_strategy="simple")
-#print(nlp(text))
-
-#print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "Keine GPU")
-
-
-# Beispieltext
-#text = "Angela Merkel wurde 2005 zur Bundeskanzlerin gewählt und war bis 2021 im Amt. Sie wurde in Hamburg geboren."
-
-#nlp.to_bytes().to_file("store/ner")
-
-
-# muss das Modell laden für NLP: python -m spacy download en_core_web_sm
-
 if __name__ == '__main__':
+    app = Flask(__name__)
+    app.register_blueprint(api)
+    #app.run(debug=True)
     run_test()
     #app.run(debug=True)
