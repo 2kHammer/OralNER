@@ -8,8 +8,8 @@ from service.app_router import api
 from app.model.framework_provider.framework import FrameworkNames
 from model.ner_model_provider.model_registry import ModelRegistry
 from model.ner_model_provider.ner_model import NERModel
-from model.framework_provider.huggingface_framework import HuggingFaceFramework
-from model.data_provider.data_registry import DataRegistry, data_registry
+from app.model.framework_provider.huggingface_framework import HuggingFaceFramework
+from app.model.data_provider.data_registry import data_registry
 
 def run_test():
     
@@ -44,8 +44,20 @@ def run_test():
 
     hf = HuggingFaceFramework()
     rows = data_registry.load_training_data(3)
-    test_obj = rows[123]
+    test_objs = rows[20:100]
+
     hf.load_model(model_registry.current_model)
+    ner_res = hf.apply_ner([to.text for to in test_objs])
+    test= hf.convert_ner_results(ner_res,[to.text for to in test_objs])
+    print(test[1])
+
+
+    '''
+    Read in Dataset
+    filename = "adg2983.csv"
+    with open(TRAININGSDATA_PATH+"/"+filename,newline='') as csvfile:
+        data_registry.add_training_data("adg2983",filename,csvfile)
+    '''
 
 
 

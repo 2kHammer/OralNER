@@ -30,10 +30,17 @@ entities = {
     "DATE":8
 }
 
+def simple_tokenizer(text):
+    doc = DataRegistry.nlp.tokenizer(text)
+    indexes = [token.idx for token in doc]
+    tokens = [token.text for token in doc]
+    return tokens, indexes
 
 class DataRegistry:
     _instance = None
-    
+    # is available for all instances
+    nlp = spacy.load(DEFAULT_TOKENIZER_PATH)
+
     # Singleton
     def __new__(cls, *args,**kwargs):
         if cls._instance is None:
@@ -56,7 +63,19 @@ class DataRegistry:
 
     def list_training_data(self):
         return self._datasets
-    
+
+    # only supported format is the adg-format or normal text
+    # bert Modelle have a maximal input of 512 tokens -> rest is cut
+    # every interview statement is processed sequential
+    # split in two functions
+    def prepare_data_with_labels(self, data_to_process):
+        return self._read_convert_adg_file(data_to_process)
+
+    def prepare_data_witout_labels(self, data_to_process):
+        doc = self.__class__.nlp(data_to_process)
+        return [sent.text for sent in doc.sents]
+
+
     def add_training_data(self, dataset_name,filename, file):
         if self.save_training_data(file, TRAININGSDATA_CONVERTED_PATH, filename):
             id = self._get_next_id()
@@ -73,17 +92,24 @@ class DataRegistry:
     # prüft quasi auch ob dies das richtige Format besitzt
     # works mit Path for now, has to be changed to file later
     def save_training_data(self, file, path_to_save, filename):
-        nlp = spacy.load(DEFAULT_TOKENIZER_PATH)
-        reader = csv.reader(file,delimiter=';')
+        try:
+            adg_rows = self._read_convert_adg_file(file)
+            write_path = path_to_save+"/"+filename.replace(".csv",".json")
+            self._save_rows_as_json(adg_rows,write_path)
+            return True
+        except Exception as e:
+            print("Error in saving and converting adg file")
+            return False
+
+    def _read_convert_adg_file(self, file):
+        reader = csv.reader(file, delimiter=';')
         rows = []
         idx = 1
         for row in reader:
             if len(row) > 0:
-                rows.append(extract_ADG_row(row, nlp,idx))
+                rows.append(extract_ADG_row(row, self.__class__.nlp, idx))
                 idx += 1
-        write_path = path_to_save+"/"+filename.replace(".csv",".json")
-        self._save_rows_as_json(rows,write_path)
-
+        return rows
 
     def _save_rows_as_json(self, rows,path):
         rows_dicts = []

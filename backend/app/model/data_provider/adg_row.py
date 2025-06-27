@@ -11,6 +11,7 @@ class ADGRow:
     person: str
     text: str
     tokens: List[str]
+    indexes: List[int]
     labels: List[str]
     entities: List[dict]
     other: List[Tuple[str, str]]
@@ -97,7 +98,7 @@ def extract_ADG_row(row, nlp,idx):
                     print("incostency in " +str(idx)+": "+full_row)
                     return None
 
-    return ADGRow(idx,full_row,number,ts,speaker,text,tokens,labels,entities_with_positions,other)
+    return ADGRow(idx,full_row,number,ts,speaker,text,tokens,startindex_tokens,labels,entities_with_positions,other)
 
 
 
