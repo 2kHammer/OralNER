@@ -1,7 +1,4 @@
 .vscode/
-# ----------------------------------------------
-# Frontend - zunächst komplett ignorieren
-frontend/
 
 # ----------------------------------------------
 # Backend

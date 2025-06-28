@@ -1,0 +1,12 @@
+.window {
+    display: none;
+}
+
+.window.active {
+    display: grid;
+    grid-template-columns: 10% 80% 10%;
+}
+
+.content {
+    grid-column: 2
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>OralNER</title>
+    <link rel="stylesheet" href="styles/styles.css">
+    <!--<link rel="icon" href="./favicon.ico" type="image/x-icon"> -->
+  </head>
+  <body>
+    <main>
+        <div id="home" class="window active">
+          <div></div> <!--Linker Abstand-->
+          <div class="content">
+            <h1>OralNER</h1>
+            <div>
+              Transkribiertes Interview einfügen oder hochladen
+              <button>Interview hochladen</button>
+              <button disabled>Export</button>
+            </div>
+            <div>
+              <textarea id="userText" name="userText" rows="10" cols="50" placeholder="Hier kannst du deinen Text eingeben..."></textarea>
+            </div>
+            <div>
+              <p>Aktuelles Model:</p>
+            </div>
+            <div>
+              <button onclick="switchWindow('finetuning')">Modell feinanpassen</button>
+              <button onclick="switchWindow('comparison')">Modelle vergleichen</button>
+              <button>Datensatz hochladen</button>
+            </div>
+          </div>
+          <div></div> <!--Rechter Abstand-->
+        </div>
+        <div id="finetuning" class="window">
+          <div></div> <!--Linker Abstand-->
+          <div class="content">
+            <h1>Modell feinanpassen</h1>
+            <button onclick="switchWindow('home')">Zurück</button>
+          </div>
+          <div></div> <!--Rechter Abstand-->
+        </div>
+        <div id="comparison" class="window">
+          <div></div> <!--Linker Abstand-->
+          <div class="content">
+            <h1>Modell auswählen</h1>
+            <div id="table-container" style="height: 300px; overflow-y: auto; border: 1px solid #ccc;">
+              <!-- Tabelle wird per JavaScript hier erzeugt -->
+            </div>
+            <button onclick="switchWindow('home')">Zurück</button>
+          </div>
+          <div></div> <!--Rechter Abstand-->
+        </div>
+    </main>
+
+    <!-- scripts-->
+    <script src="controllers/ui-manager/windowSwitcher.js"></script>
+    <script src="controllers/ui-manager/modelComparison.js"></script>
+  </body>
+</html>
