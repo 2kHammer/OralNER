@@ -10,3 +10,9 @@
 .content {
     grid-column: 2
 }
+
+.editable {
+    border: 1px solid #ccc;
+    padding: 10px;
+    min-height: 100px;
+  }
