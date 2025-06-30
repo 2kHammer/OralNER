@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS
 
 from app.model.data_provider.data_registry import data_registry
 from app.model.ner_model_provider.model_registry import model_registry
@@ -75,6 +76,7 @@ def run_test():
 if __name__ == '__main__':
     app = Flask(__name__)
     app.register_blueprint(api)
-    #app.run(debug=True)
-    run_test()
+    CORS(app)
+    app.run(debug=True)
+    #run_test()
     #app.run(debug=True)

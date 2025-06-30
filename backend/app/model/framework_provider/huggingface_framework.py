@@ -33,6 +33,7 @@ class HuggingFaceFramework(Framework):
 
         ner_results = []
         for text in texts:
+            print(text)
             nlp = pipeline("ner",model=self.model,tokenizer=self.tokenizer, aggregation_strategy=None)
             ner_results.append(nlp(text))
         return ner_results

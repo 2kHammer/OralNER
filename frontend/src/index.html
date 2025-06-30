@@ -16,14 +16,18 @@
             <h1>OralNER</h1>
             <div>
               Transkribiertes Interview einfügen oder hochladen
-              <button>Interview hochladen</button>
-              <button disabled>Export</button>
+              <form id="uploadForm">
+                <input type="file" id="fileInput" name="file" />
+                <button type="submit">Hochladen & Anwenden</button>
+              <button id="exportResults" disabled>Export Ergebnisse</button>
+              </form>
             </div>
             <div>
               <textarea id="userText" name="userText" rows="10" cols="50" placeholder="Hier kannst du deinen Text eingeben..."></textarea>
+              <button id="buttonApplyNER" disabled>Anwenden auf Text</button>
             </div>
             <div>
-              <p>Aktuelles Model:</p>
+              <p id="actualModel"></p>
             </div>
             <div>
               <button onclick="switchWindow('finetuning')">Modell feinanpassen</button>
@@ -49,13 +53,18 @@
               <!-- Tabelle wird per JavaScript hier erzeugt -->
             </div>
             <button onclick="switchWindow('home')">Zurück</button>
+            <button id="buttonSetModelActive" disabled>Aktiv setzen</button>
+            <div id="labelFeedbackSetModelActive"></div>
           </div>
           <div></div> <!--Rechter Abstand-->
         </div>
     </main>
 
     <!-- scripts-->
-    <script src="controllers/ui-manager/windowSwitcher.js"></script>
-    <script src="controllers/ui-manager/modelComparison.js"></script>
+     <script type="module" src="services/api.js"></script>
+     <script type="module" src="controllers/service-manager/modelManagement.js"></script>
+    <script type="module" src="controllers/ui-manager/windowSwitcher.js"></script>
+    <script type="module" src="controllers/ui-manager/modelComparison.js"></script>
+    <script type="module" src="controllers/ui-manager/applyNER.js"></script>
   </body>
 </html>

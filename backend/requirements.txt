@@ -5,3 +5,4 @@ accelerate
 datasets
 evaluate
 Flask
+flask-cors

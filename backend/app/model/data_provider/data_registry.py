@@ -71,7 +71,7 @@ class DataRegistry:
     def prepare_data_with_labels(self, data_to_process):
         return self._read_convert_adg_file(data_to_process)
 
-    def prepare_data_witout_labels(self, data_to_process):
+    def prepare_data_without_labels(self, data_to_process):
         doc = self.__class__.nlp(data_to_process)
         return [sent.text for sent in doc.sents]
 
