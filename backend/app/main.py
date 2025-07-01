@@ -1,9 +1,9 @@
+import spacy
 from flask import Flask
 from flask_cors import CORS
 
-from app.model.data_provider.data_registry import data_registry
 from app.model.ner_model_provider.model_registry import model_registry
-from app.utils.config import STORE_PATH, TRAININGSDATA_PATH
+from app.utils.config import STORE_PATH, TRAININGSDATA_PATH, DEFAULT_TOKENIZER_PATH
 from service.app_router import api
 
 from app.model.framework_provider.framework import FrameworkNames
@@ -43,6 +43,7 @@ def run_test():
     #results, args = hf.finetune_ner_model(base_models_path+model_name_save,data,labelid,new_model_name,models_modified_path)
     #model_registry.add_training(modified_model_id, trainingsdata_name, 2,results, args)
 
+    '''
     hf = HuggingFaceFramework()
     rows = data_registry.load_training_data(3)
     test_objs = rows[20:100]
@@ -51,6 +52,7 @@ def run_test():
     ner_res = hf.apply_ner([to.text for to in test_objs])
     test= hf.convert_ner_results(ner_res,[to.text for to in test_objs])
     print(test[1])
+    '''
 
 
     '''
@@ -77,6 +79,11 @@ if __name__ == '__main__':
     app = Flask(__name__)
     app.register_blueprint(api)
     CORS(app)
-    app.run(debug=True)
-    #run_test()
-    #app.run(debug=True)
+    app.run(debug=False)
+
+    @app.after_request
+    def add_cache_control_headers(response):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response

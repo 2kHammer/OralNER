@@ -11,7 +11,7 @@ def get_models():
     except Exception as e:
         abort(500, description="Internal Server Error: " + str(e))
 
-@api.route('/models/<int:model_id>', methods=['GET'])
+@api.route('/models/<int:id>', methods=['GET'])
 def get_model(id):
     try:
         model = model_manager.get_model(id)
@@ -61,5 +61,23 @@ def apply_ner():
             tokens, labels, metrics = ner_manager.ner(decoded_file, True)
             return jsonify([tokens,labels,metrics]), 200
         return jsonify({'error': 'No valid text or file provided'}), 400
+    except Exception as e:
+        abort(500, description="Internal Server Error: " + str(e))
+
+
+@api.route('/ner/finetune', methods=['POST'])
+def finetune():
+    try:
+        if request.is_json:
+            data = request.get_json()
+            model_id = data.get("model_id")
+            dataset_id = data.get("dataset_id")
+            parameters = data.get("parameters")
+            name = parameters.get("new_model_name")
+            if model_id is None or dataset_id is None or name is None:
+                return jsonify({'error': 'No valid model_id or dataset_id or parameters provided'}), 400
+            model_id = ner_manager.finetune_ner(model_id, dataset_id, name)
+            return jsonify({"modified_model_id": model_id}), 202
+
     except Exception as e:
         abort(500, description="Internal Server Error: " + str(e))

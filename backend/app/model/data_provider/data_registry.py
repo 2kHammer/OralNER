@@ -101,6 +101,10 @@ class DataRegistry:
             print("Error in saving and converting adg file")
             return False
 
+    def get_training_data_name(self, id):
+        index = self._get_index_trainingsdata_id(id)
+        return self._datasets[index].name
+
     def _read_convert_adg_file(self, file):
         reader = csv.reader(file, delimiter=';')
         rows = []

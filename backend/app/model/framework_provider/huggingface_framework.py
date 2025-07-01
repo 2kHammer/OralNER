@@ -3,7 +3,7 @@ from lib2to3.btm_utils import tokens
 from .framework import Framework
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline, DataCollatorForTokenClassification, TrainingArguments, Trainer
 from datasets import Dataset, DatasetDict
-import evaluate
+from evaluate import load
 from seqeval.metrics import precision_score, recall_score, f1_score, accuracy_score
 import numpy as np
 
@@ -72,13 +72,11 @@ class HuggingFaceFramework(Framework):
         # wird über Path angeben
         tokenizer = AutoTokenizer.from_pretrained(base_model_path)
         model = AutoModelForTokenClassification.from_pretrained(base_model_path,num_labels=len(list_labels),id2label=id_label, label2id=label_id,ignore_mismatched_sizes=True)
-        # ausgliedern in JSON-Datei
-        print(new_model_path+name)
 
         # best modell is saved in directory as checkpoint-xx, then loaded in the trainer (load_best_model_at_the_end)
         # -> überschreibt manuell das Verzeichnis
         training_args = TrainingArguments(
-            output_dir=new_model_path+name,
+            output_dir=new_model_path,
             evaluation_strategy="epoch",
             save_strategy="epoch",
             save_total_limit=3,
@@ -105,8 +103,8 @@ class HuggingFaceFramework(Framework):
         train_results =trainer.train()
         metrics = trainer.evaluate()
         args = trainer.args.to_dict()
-        trainer.save_model(new_model_path+name)
-        delete_checkpoints_folder(new_model_path+name)
+        trainer.save_model(new_model_path)
+        delete_checkpoints_folder(new_model_path)
         print("Training done")
         print(metrics)
         return self._convert_metrics(metrics,train_results.metrics["train_runtime"]), args
@@ -142,6 +140,8 @@ class HuggingFaceFramework(Framework):
                 predicted_labels.append(labels_row)
                 tokens.append(adg_row.tokens)
                 annoted_labels.append(adg_row.labels)
+
+                # mehrfacheinfügung von seqeqval muss hier noch aufgebrochen werden
             metrics = {
                 "f1" :f1_score(annoted_labels,predicted_labels),
                 "recall" : recall_score(annoted_labels,predicted_labels),
@@ -230,7 +230,7 @@ class HuggingFaceFramework(Framework):
         return new_labels
 
     def compute_metrics(self,p, label_list):
-        seqeval = evaluate.load("seqeval")
+        seqeval = load("seqeval")
         predictions, labels = p
         predictions = np.argmax(predictions, axis=2)
 

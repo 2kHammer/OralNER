@@ -25,6 +25,7 @@
             </div>
             <div>
               <div id="userText" contenteditable="true" class="editable"></div>
+              <div id="entityLegend"></div>
               <button id="buttonApplyNER" disabled>Anwenden auf Text</button>
             </div>
             <div>
@@ -42,6 +43,20 @@
           <div></div> <!--Linker Abstand-->
           <div class="content">
             <h1>Modell feinanpassen</h1>
+            <h2 id="statusHeading"></h3>
+            <div id="finetuningContainer">
+              <h3>Modell auswählen</h3>
+              <div id="modelSelectionContainer" style="height: 35%; overflow-y: auto; border: 1px solid #ccc;">
+                <!-- Tabelle wid per Javascript erzeugt-->
+              </div>
+              <h3>Datensatz auswählen</h3>
+              <div id="datasetSelectionContainer" style="height: 35%; overflow-y: auto; border: 1px solid #ccc;">
+              </div>
+              <h3>Weitere Parameter auswählen</h3>
+              <label for="modelNameInput">Name des anzupassenden Modells:</label>
+              <input type="text" id="modelNameInput" name="name" placeholder="Angepasster Name"></input>
+              <button id="buttonFinetuneModel" disabled>Modell feinanpassen</button>
+            </div>
             <button onclick="switchWindow('home')">Zurück</button>
           </div>
           <div></div> <!--Rechter Abstand-->
@@ -50,7 +65,7 @@
           <div></div> <!--Linker Abstand-->
           <div class="content">
             <h1>Modell auswählen</h1>
-            <div id="table-container" style="height: 300px; overflow-y: auto; border: 1px solid #ccc;">
+            <div id="modelComparisonContainer" style="height: 90%; overflow-y: auto; border: 1px solid #ccc;">
               <!-- Tabelle wird per JavaScript hier erzeugt -->
             </div>
             <button onclick="switchWindow('home')">Zurück</button>
@@ -67,5 +82,6 @@
     <script type="module" src="controllers/ui-manager/windowSwitcher.js"></script>
     <script type="module" src="controllers/ui-manager/modelComparison.js"></script>
     <script type="module" src="controllers/ui-manager/applyNER.js"></script>
+    <script type="module" src="controllers/ui-manager/finetuneModel.js"></script>
   </body>
 </html>

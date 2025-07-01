@@ -1,7 +1,9 @@
 from .ner_model import NERModel, TrainingResults
 from app.utils.json_manager import JsonManager
 from app.utils.helpers import get_current_datetime
-from app.utils.config import MODEL_METADATA_PATH
+from app.utils.config import MODEL_METADATA_PATH, MODIFIED_MODELS_PATH
+from ..framework_provider.framework import FrameworkNames
+
 
 
 class ModelRegistry:
@@ -31,6 +33,9 @@ class ModelRegistry:
     @property
     def current_model(self):
         return self._current_model
+    
+    def create_modified_model(self, new_model_name, base_model):
+        return NERModel(3, new_model_name, base_model.framework_name, base_model.name,MODIFIED_MODELS_PATH+"/"+new_model_name)
 
     def set_current_model(self,id):
         index_model = self._get_index_model_id(id)
