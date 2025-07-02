@@ -24,8 +24,7 @@ class HuggingFaceFramework(Framework):
         self.ner_model = model
         self.model = AutoModelForTokenClassification.from_pretrained(model.storage_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model.storage_path)
-        print(model.name + " is loaded")
-        
+
     def apply_ner(self, texts):
         if not isinstance(texts, list):
             if not isinstance(texts[0], str):
@@ -38,21 +37,23 @@ class HuggingFaceFramework(Framework):
             ner_results.append(nlp(text))
         return ner_results
 
-    def prepare_training_data(self, rows, tokenizer_path, train_size=0.7, validation_size=0.1, test_size=0.2):
+    def prepare_training_data(self, rows, tokenizer_path, train_size=0.7, validation_size=0.1, test_size=0.2, split_sentences=False):
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
 
         # trainingsdaten auf sätze umstellen
 
-        # vielleicht später noch auf ein globales Dictionary umändern
-        # sort the labels or insert all, if time
+        # create dictionary with entity-types in the trainingsdata
         all_labels = list(set(label for row in rows for label in row.labels))
         label_id = {label: i for i, label in enumerate(all_labels)}
+
+        #create dataset from traingsdata
         data = Dataset.from_list([{"tokens":row.tokens,"labels":[label_id[label] for label in row.labels]} for row in rows[1:]])
-        # read full data
+
+        # tokenize training data
         tokenized_data = data.map(lambda x: self._tokenize_and_align_labels(x,tokenizer_path), batched=True)
 
-        # wird validation überhaupt benötigt?
+        # is validation needed?
         split_test = tokenized_data.train_test_split(test_size=test_size, seed=42)
         test_data = split_test["test"]
         train_data = split_test["train"]
@@ -191,13 +192,16 @@ class HuggingFaceFramework(Framework):
 
         labels = []
         for i, label in enumerate(statement[f"labels"]):
-            word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
+            # Map tokens to their respective word.
+            word_ids = tokenized_inputs.word_ids(batch_index=i)
             previous_word_idx = None
             label_ids = []
-            for word_idx in word_ids:  # Set the special tokens to -100.
+            # Set the special tokens to -100.
+            for word_idx in word_ids:
                 if word_idx is None:
                     label_ids.append(-100)
-                elif word_idx != previous_word_idx:  # Only label the first token of a given word.
+                # Only label the first token of a given word.
+                elif word_idx != previous_word_idx:
                     label_ids.append(label[word_idx])
                 else:
                     label_ids.append(-100)

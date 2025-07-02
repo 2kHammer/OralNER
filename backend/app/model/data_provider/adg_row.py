@@ -19,11 +19,16 @@ class ADGRow:
 
 # check the format of the data und try to make it better - if I have time
 def extract_ADG_row(row, nlp,idx):
-    """Return the ADGRow from a row
-    If a annotated entity doesn't match to words or its only the type -> ist in else
-    Arguments:
+    """
+    Return the ADGRow from a row.
+    If an annotated entity doesn't match to words or it contains only the type -> saved in other
+
+    Parameters:
         -row: string of one ADG ROW
         -tokenizer: spacy tokenizer
+
+    Returns:
+        - ADGRow
     """
     # extract general infos from text
     full_row = "".join(row)
@@ -44,16 +49,19 @@ def extract_ADG_row(row, nlp,idx):
             if match:
                 text_description_optional = match.group(1).split("[")
                 entities.append((text_description_optional[0].strip(),match.group(2)))
-    #map entities to text
+
+    #map entities to text with start and endindex
     entities_with_positions = []
     for index,entity in enumerate(entities):
         start_end_entities = []
         entity_text = entity[0]
+        #entity without text -> save in other
         if len(entity_text) > 0:
             matches = re.finditer(re.escape(entity_text),text)
             for match in matches:
                 start_end_entities.append((match.span()[0],match.span()[1]))
 
+            # entity which is not found in text -> save in other
             if len(start_end_entities) == 0:
                 other.append(entity)
             else:
@@ -62,11 +70,6 @@ def extract_ADG_row(row, nlp,idx):
                     "typ": entity[1],
                     "indexes": start_end_entities
                 })
-        # if len(start_end_entities) == 0,
-        # doesn't found entity text -> but entity must be in text
-         # think about handling later
-
-
         else:
             other.append(entity)
 
@@ -80,17 +83,18 @@ def extract_ADG_row(row, nlp,idx):
 
     labels = ["O"] * len(tokens)
     if len(entities_with_positions) > 0:
+        # iterate over all startindexes of an entity
         for ent in entities_with_positions:
-            # over all occurences through the indexes
             for occurance in ent["indexes"]:
                 try:
                     startindex = occurance[0]
-                    # check if startindex of the entity is a complete token
+                    # check if startindex of the entity is a complete token (maybe the entity is part of another token -> don't include)
                     if startindex in startindex_tokens:
                         index_labels = startindex_tokens.index(startindex)
                         labels[index_labels] = "B-"+ent["typ"]
                         entity_tokens = nlp.tokenizer(ent["entity_text"])
                         len_entity = len(entity_tokens)
+                        # if the entity is longer than 1 token -> label the other tokens
                         for i in range(1,len_entity):
                             index_labels += 1
                             labels[index_labels] = "I-"+ent["typ"]

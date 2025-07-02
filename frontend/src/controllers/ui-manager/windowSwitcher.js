@@ -1,6 +1,8 @@
 import { getActiveModelname} from "../service-manager/modelManagement.js";
+import { initComparisonWindow } from "./modelComparison.js";
+import { initFinetuningWindow } from "./finetuneModel.js";
 
-function switchWindow(id) {
+async function switchWindow(id) {
     // hide every window
     document.querySelectorAll('.window').forEach(div => {
         div.classList.remove('active')
@@ -13,6 +15,10 @@ function switchWindow(id) {
 
     if (id == "home"){
       initHome();
+    } else if (id == "finetuning"){
+      await initFinetuningWindow();
+    } else if (id == "comparison"){
+      await initComparisonWindow();
     }
   }
 

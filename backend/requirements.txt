@@ -6,3 +6,4 @@ datasets
 evaluate
 Flask
 flask-cors
+huggingface_hub

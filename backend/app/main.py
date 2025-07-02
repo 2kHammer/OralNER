@@ -1,9 +1,10 @@
 import spacy
 from flask import Flask
 from flask_cors import CORS
+from transformers import AutoTokenizer, AutoModel, AutoModelForTokenClassification
 
 from app.model.ner_model_provider.model_registry import model_registry
-from app.utils.config import STORE_PATH, TRAININGSDATA_PATH, DEFAULT_TOKENIZER_PATH
+from app.utils.config import STORE_PATH, TRAININGSDATA_PATH, DEFAULT_TOKENIZER_PATH, BASE_MODELS_PATH
 from service.app_router import api
 
 from app.model.framework_provider.framework import FrameworkNames

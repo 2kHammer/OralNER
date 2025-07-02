@@ -95,11 +95,14 @@ async function setModelActive(){
     labelFeedbackSetModelActive.innerHTML = `${timeStr}: Fehler beim Setzen des aktiven Models`
   }
 }
-  
-let models = await getModels();
-if (models != undefined){
-  let modelData = createModelTableVals(models);
-  createTable(modelData,modelColumns, container, handleClickModelComparison);
+
+export async function initComparisonWindow(){
+  let models = await getModels();
+  if (models != undefined){
+    let modelData = createModelTableVals(models);
+    createTable(modelData,modelColumns, container, handleClickModelComparison);
+  }
 }
 
 buttonSetActive.onclick = setModelActive
+await initComparisonWindow();

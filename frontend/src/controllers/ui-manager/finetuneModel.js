@@ -85,16 +85,23 @@ function endCheckIfModelIsInFinetuning(){
    clearInterval(timerId) 
 }
 
-let models = await getModels();
-if (models != undefined){
-    let modelVals = createModelTableVals(models)
-    createTable(modelVals, modelColumns, modelSelectionContainer, handleClickModelComparison)
-}
+export async function initFinetuningWindow() {
+    let models = await getModels();
+    if (models != undefined){
+        let modelVals = createModelTableVals(models)
+        createTable(modelVals, modelColumns, modelSelectionContainer, handleClickModelComparison)
+    }
 
-let datasets = await getTrainingsData()
-if (datasets != undefined){
-    let datasetTableVals = createDatasetTableVals(datasets)
-    createTable(datasetTableVals,datasetColumns,datasetSelectionContainer, handleClickDatasetComparison)
+    let datasets = await getTrainingsData()
+    if (datasets != undefined){
+        let datasetTableVals = createDatasetTableVals(datasets)
+        createTable(datasetTableVals,datasetColumns,datasetSelectionContainer, handleClickDatasetComparison)
+    }
+
+    checkIfModelIsInFinetuning()
+    if (localStorage.getItem(keyModifiedModelId)){
+        startCheckIfModelIsInFinetuning();
+    }
 }
 
 modelNameInput.addEventListener("input", ()=>{
@@ -104,10 +111,10 @@ modelNameInput.addEventListener("input", ()=>{
 })
 
 buttonFinetuneModel.onclick = finetune
+await initFinetuningWindow();
 
-checkIfModelIsInFinetuning()
 
 
-if (localStorage.getItem(keyModifiedModelId)){
-    startCheckIfModelIsInFinetuning();
-}
+
+
+
