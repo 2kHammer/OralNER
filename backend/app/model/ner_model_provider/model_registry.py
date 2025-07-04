@@ -1,6 +1,6 @@
 from .ner_model import NERModel, TrainingResults
 from app.utils.json_manager import JsonManager
-from app.utils.helpers import get_current_datetime
+from app.utils.helpers import get_current_datetime, random_string
 from app.utils.config import MODEL_METADATA_PATH, MODIFIED_MODELS_PATH
 from ..framework_provider.framework import FrameworkNames
 
@@ -32,7 +32,10 @@ class ModelRegistry:
 
     @property
     def current_model(self):
-        return self._current_model
+        if len(self._models) > 0:
+            return self._current_model
+        else:
+            return None
     
     def create_modified_model(self, new_model_name, base_model):
         return NERModel(3, new_model_name, base_model.framework_name, base_model.name,MODIFIED_MODELS_PATH+"/"+new_model_name)
@@ -49,6 +52,8 @@ class ModelRegistry:
         model.set_id(self._get_next_id())
         model.name = self._check_make_name_unique(model.name,get_current_datetime())
         self._models.append(model)
+        if(len(self._models) == 1):
+            self._current_model = model
         self._udpate_metadata()
         return model.id
 
@@ -95,8 +100,13 @@ class ModelRegistry:
     def _check_make_name_unique(self, new_name,date):
         names = [model.name for model in self._models]
         if new_name in names:
-            return new_name + str(date)
+            return new_name + "_"+ str(date)+"_" + random_string(10)
         else:
             return new_name
+
+    @classmethod
+    def _reset_instance(cls):
+        """ Only for testing purposes """
+        cls._instance = None
 
 model_registry = ModelRegistry(MODEL_METADATA_PATH,1)

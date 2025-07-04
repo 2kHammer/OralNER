@@ -1,3 +1,5 @@
+import secrets
+import string
 from datetime import datetime
 import os, shutil
 
@@ -14,3 +16,7 @@ def delete_checkpoints_folder(path):
             if os.path.isdir(full_path) and f.startswith("checkpoint-"):
                 print(f"Lösche: {full_path}")
                 shutil.rmtree(full_path)
+
+def random_string(length):
+    letters = string.ascii_letters
+    return ''.join(secrets.choice(letters) for _ in range(length))

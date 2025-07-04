@@ -9,6 +9,14 @@ class FrameworkNames(Enum):
 entity_types = []
 
 class Framework(ABC):
+    @property
+    @abstractmethod
+    def default_finetuning_params(self):
+        """
+        Returns a dictionary with the default finetuning params.
+        """
+        pass
+
     @abstractmethod
     def load_model(self,model):
         """
@@ -18,7 +26,8 @@ class Framework(ABC):
         model (NERModel): The model to load.
         """
         pass
-    
+
+    # think about if the texts should be automatically be splitted into sentences
     @abstractmethod
     def apply_ner(self, text):
         """
@@ -46,14 +55,38 @@ class Framework(ABC):
         split_sentences (bool): Should the statements be split for finetuning
 
         Returns:
-        ({}, {}): First dict contains the split data, second contains the entity types with their numbers
+        (dict, dict): First dict contains the split data, second contains the entity types with their numbers
         """
         pass
     
     @abstractmethod
-    def finetune_ner_model(self,base_model_path,data_dict, label_id,name,new_model_path):
+    def finetune_ner_model(self,base_model_path,data_dict, label_id,name,new_model_path, params=None):
+        """
+        Finetune the NER model under `base_model_path`
+
+        Parameters:
+        base_model_path (str): path were the model to finetune is saved
+        data_dict (dict): contains the split data in the framework specific format
+        label_id (dict): contains the entity types with their numbers
+        name (str): Name of the finetuned model
+        new_model_path (str): path were the model to finetune is saved
+        params (dict): framework specific parameters for the finetuning
+
+        Returns:
+        (TrainingResults, dict)
+        """
         pass
 
     @abstractmethod
     def convert_ner_results(self,ner_results, ner_input):
+        """
+        Converts the framework-specific `ner-results` to BIO-format. If the input data is in the format List[ADGRow], you receive metrics.
+
+        Parameters:
+        ner_results (List): List of framework-specific NER results
+        ner_input (List): List of strings or of ADGRow
+
+        Returns:
+        (List, List, Dict): First List contains the tokens, second the predicted lables and the dict the metrics
+        """
         pass

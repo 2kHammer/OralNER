@@ -26,6 +26,9 @@ class NERModel:
         self.trainings = []
     
     def append_training(self, date:int, dataset_name:str, dataset_id: int,results: TrainingResults,trainings_args: dict):
+        """
+        Append another training to `trainings`
+        """
         self.trainings.append({
             "date": date,
             "dataset_name": dataset_name,
@@ -38,6 +41,9 @@ class NERModel:
         self.id = id
 
     def set_state(self, state:int):
+        """
+        Sets the state of the NER Model with a number matching to `FrameworkNames
+        """
         if state > 0 and state < 4:
             self.state = ModelState(state)
         else:
@@ -63,6 +69,7 @@ class NERModel:
                 for t in self.trainings
             ]
         }
+
     @classmethod
     def from_dict(cls, d: dict):
         model = cls(

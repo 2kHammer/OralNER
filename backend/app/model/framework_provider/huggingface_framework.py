@@ -7,7 +7,8 @@ from evaluate import load
 from seqeval.metrics import precision_score, recall_score, f1_score, accuracy_score
 import numpy as np
 
-from app.model.data_provider.data_registry import ADGRow
+from app.model.data_provider.data_registry import simple_split_sentences, simple_tokenizer
+from app.model.data_provider.adg_row import ADGRow
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.helpers import delete_checkpoints_folder
 
@@ -17,6 +18,21 @@ class HuggingFaceFramework(Framework):
         self.ner_model = None
         self.model = None
         self.tokenizer = None
+
+    @property
+    def default_finetuning_params(self):
+        return {
+            "evaluation_strategy":"epoch",
+            "save_strategy": "epoch",
+            "save_total_limit" : 3,
+            "learning_rate" :2e-5,
+            "per_device_train_batch_size":4,
+            "per_device_eval_batch_size" :4,
+            "num_train_epochs": 3,
+            "weight_decay" :0.01,
+            "load_best_model_at_end" : True,
+            "metric_for_best_model": "f1",
+        }
 
     def load_model(self, model):
         if not isinstance(model, NERModel):
@@ -32,7 +48,9 @@ class HuggingFaceFramework(Framework):
 
         ner_results = []
         for text in texts:
-            print(text)
+            #print(text)
+            # maybe change the aggregation strategy
+            # subtokens could be labeled as entities
             nlp = pipeline("ner",model=self.model,tokenizer=self.tokenizer, aggregation_strategy=None)
             ner_results.append(nlp(text))
         return ner_results
@@ -41,16 +59,22 @@ class HuggingFaceFramework(Framework):
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
 
-        # trainingsdaten auf sätze umstellen
 
         # create dictionary with entity-types in the trainingsdata
         all_labels = list(set(label for row in rows for label in row.labels))
         label_id = {label: i for i, label in enumerate(all_labels)}
 
-        #create dataset from traingsdata
-        data = Dataset.from_list([{"tokens":row.tokens,"labels":[label_id[label] for label in row.labels]} for row in rows[1:]])
+        data = None
+        # change statements to sentences and create the dataset
+        if split_sentences:
+            sentences_tokens, sentences_labels = self._split_training_data_sentences(rows)
+            data = Dataset.from_list(
+                [{"tokens": sen_tokens, "labels": [label_id[label] for label in sentences_labels[i+1]]} for i, sen_tokens in enumerate(sentences_tokens[1:])])
+        else:
+            # create dataset from traingsdata
+            data = Dataset.from_list([{"tokens": row.tokens, "labels": [label_id[label] for label in row.labels]} for row in rows[1:]])
 
-        # tokenize training data
+        # tokenize training data with word ids
         tokenized_data = data.map(lambda x: self._tokenize_and_align_labels(x,tokenizer_path), batched=True)
 
         # is validation needed?
@@ -65,29 +89,35 @@ class HuggingFaceFramework(Framework):
         dataset_dict = DatasetDict({"train":train_data, "validation":validation_data, "test":test_data})
         return dataset_dict, label_id
 
-    def finetune_ner_model(self,base_model_path,data_dict, label_id, name,new_model_path):
+
+    def finetune_ner_model(self,base_model_path,data_dict, label_id, name,new_model_path,params=None):
+        if params is None:
+            params = self.default_finetuning_params
+
+        # dictionary which maps the ids to the labels
         id_label = {value: key for key, value in label_id.items()}
+        # get a list of all labels
         sorted_label_id = dict(sorted(label_id.items(), key=lambda item: item[1]))
         list_labels = list(sorted_label_id.keys())
 
-        # wird über Path angeben
+        # init base tokenzier and base models
         tokenizer = AutoTokenizer.from_pretrained(base_model_path)
         model = AutoModelForTokenClassification.from_pretrained(base_model_path,num_labels=len(list_labels),id2label=id_label, label2id=label_id,ignore_mismatched_sizes=True)
 
         # best modell is saved in directory as checkpoint-xx, then loaded in the trainer (load_best_model_at_the_end)
-        # -> überschreibt manuell das Verzeichnis
+        # overwrite the dict manually
         training_args = TrainingArguments(
             output_dir=new_model_path,
-            evaluation_strategy="epoch",
-            save_strategy="epoch",
-            save_total_limit=3,
-            learning_rate=2e-5,
-            per_device_train_batch_size=4,
-            per_device_eval_batch_size=4,
-            num_train_epochs=3,
-            weight_decay=0.01,
-            load_best_model_at_end=True,
-            metric_for_best_model="f1",
+            evaluation_strategy=params["evaluation_strategy"],
+            save_strategy=params["save_strategy"],
+            save_total_limit=params["save_total_limit"],
+            learning_rate=params["learning_rate"],
+            per_device_train_batch_size=params["per_device_train_batch_size"],
+            per_device_eval_batch_size=params["per_device_eval_batch_size"],
+            num_train_epochs=params["num_train_epochs"],
+            weight_decay=params["weight_decay"],
+            load_best_model_at_end=params["load_best_model_at_end"],
+            metric_for_best_model=params["metric_for_best_model"],
         )
 
         data_collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
@@ -98,7 +128,7 @@ class HuggingFaceFramework(Framework):
             eval_dataset=data_dict["test"],
             processing_class=tokenizer,
             data_collator=data_collator,
-            compute_metrics=lambda p: self.compute_metrics(p, list_labels),
+            compute_metrics=lambda p: self._compute_metrics(p, list_labels),
         )
 
         train_results =trainer.train()
@@ -110,83 +140,118 @@ class HuggingFaceFramework(Framework):
         print(metrics)
         return self._convert_metrics(metrics,train_results.metrics["train_runtime"]), args
 
+
     # split function
     # add a less strict type comparison, without B- and I-
     def convert_ner_results(self,ner_results, ner_input):
+        if isinstance(ner_input[0], ADGRow):
+            return self._convert_ner_results_adg(ner_results, ner_input)
+        else:
+            tokens, predicted_labels = self._convert_ner_results_not_adg(ner_results, ner_input)
+            return tokens, predicted_labels, None
+
+    def _convert_ner_results_adg(self, ner_results, ner_input):
         metrics = None
         tokens = []
         predicted_labels = []
         annoted_labels = []
-        if isinstance(ner_input[0], ADGRow):
-            for index,result in enumerate(ner_results):
-                adg_row = ner_input[index]
-                labels_row = ["O"] * len(adg_row.labels)
-                for entity in result:
-                    if entity["word"][:2] != '##':#
-                        try:
-                            index_label = -1
-                            if entity["start"] in adg_row.indexes:
-                                index_label = adg_row.indexes.index(entity["start"])
-                            else:
-                                # if only a part of the wort is recognized as entity -> apply to full word
-                                for index, index_val in enumerate(adg_row.indexes):
-                                    if index_val > entity["start"]:
-                                        index_label = index -1
-                                        break
-                            labels_row[index_label] = entity["entity"]
-                        except ValueError:
-                            print("Error by assigning the predicted labels")
-                            #print(adg_row.text)
-                            #print(adg_row.entities)
-                predicted_labels.append(labels_row)
-                tokens.append(adg_row.tokens)
-                annoted_labels.append(adg_row.labels)
+        for index, result in enumerate(ner_results):
+            adg_row = ner_input[index]
+            labels_row = ["O"] * len(adg_row.labels)
+            # map the entities to labels_row
+            for entity in result:
+                if entity["word"][:2] != '##':  #
+                    try:
+                        index_label = -1
+                        # search the index of the corresponding token in adgrow
+                        if entity["start"] in adg_row.indexes:
+                            index_label = adg_row.indexes.index(entity["start"])
+                        else:
+                            # if only a part of the word is recognized as entity -> apply to full word
+                            for index, index_val in enumerate(adg_row.indexes):
+                                if index_val > entity["start"]:
+                                    index_label = index - 1
+                                    break
+                        labels_row[index_label] = entity["entity"]
+                    except ValueError:
+                        print("Error by assigning the predicted labels")
+            predicted_labels.append(labels_row)
+            tokens.append(adg_row.tokens)
+            annoted_labels.append(adg_row.labels)
 
-                # mehrfacheinfügung von seqeqval muss hier noch aufgebrochen werden
-            metrics = {
-                "f1" :f1_score(annoted_labels,predicted_labels),
-                "recall" : recall_score(annoted_labels,predicted_labels),
-                "precision" : precision_score(annoted_labels,predicted_labels),
-                "accuracy" : accuracy_score(annoted_labels,predicted_labels)
-            }
-        else:
-            for index_sentence, sentence in enumerate(ner_input):
-
-                # prepare tokens for return
-                tokens_hf =self.tokenizer(sentence, return_offsets_mapping=True)
-                sub_tokens = tokens_hf.tokens()[1:-1]
-                sub_startindexes = [index[0] for index in tokens_hf["offset_mapping"]][1:-1]
-                tokens_sentence = []
-                startindexes = []
-                last_append_index = 0
-                for i in range(0, len(sub_tokens)):
-                    if sub_tokens[i][:2] == "##":
-                        tokens_sentence[last_append_index] += sub_tokens[i][2:]
-                    else:
-                        tokens_sentence.append(sub_tokens[i])
-                        last_append_index = len(tokens_sentence)-1
-                        startindexes.append(sub_startindexes[i])
-
-                labels_sentence = ["O"]* len(tokens_sentence)
-                # prepare recognized entities
-                for entities in ner_results[index_sentence]:
-                    if entities["word"][0:2] != "##":
-                        #print(entities)
-                        #print(startindexes)
-                        index_entity = startindexes.index(entities["start"])
-                        #print(tokens_sentence[index_entity])
-                        labels_sentence[index_entity] = entities["entity"]
-
-                tokens.append(tokens_sentence)
-                predicted_labels.append(labels_sentence)
+        # calc metrics
+        metrics = {
+            "f1": f1_score(annoted_labels, predicted_labels),
+            "recall": recall_score(annoted_labels, predicted_labels),
+            "precision": precision_score(annoted_labels, predicted_labels),
+            "accuracy": accuracy_score(annoted_labels, predicted_labels)
+        }
         return tokens, predicted_labels, metrics
 
+    def _convert_ner_results_not_adg(self, ner_results, ner_input):
+        tokens = []
+        predicted_labels = []
+        for index_sentence, sentence in enumerate(ner_input):
 
+            # prepare tokens for return
+            tokens_hf = self.tokenizer(sentence, return_offsets_mapping=True)
+            sub_tokens = tokens_hf.tokens()[1:-1]
+            sub_startindexes = [index[0] for index in tokens_hf["offset_mapping"]][1:-1]
 
+            tokens_sentence = []
+            startindexes = []
+            last_append_index = 0
+            for i in range(0, len(sub_tokens)):
+                # append subtoken to last real token
+                if sub_tokens[i][:2] == "##":
+                    tokens_sentence[last_append_index] += sub_tokens[i][2:]
+                # append real token
+                else:
+                    tokens_sentence.append(sub_tokens[i])
+                    last_append_index = len(tokens_sentence) - 1
+                    startindexes.append(sub_startindexes[i])
 
+            labels_sentence = ["O"] * len(tokens_sentence)
+            # prepare recognized entities
+            for entities in ner_results[index_sentence]:
+                if entities["word"][0:2] != "##":
+                    # print(entities)
+                    # print(startindexes)
+                    index_entity = startindexes.index(entities["start"])
+                    # print(tokens_sentence[index_entity])
+                    labels_sentence[index_entity] = entities["entity"]
 
-    #https: // huggingface.co / docs / transformers / tasks / token_classification
+            tokens.append(tokens_sentence)
+            predicted_labels.append(labels_sentence)
+        return tokens, predicted_labels
+
+    def _split_training_data_sentences(self,rows):
+        sentences_tokens = []
+        sentences_labels = []
+        for row in rows:
+            sentences_statement, sentences_indexes_statement = simple_split_sentences(row.text)
+            full_tokens_sen = row.tokens
+            full_labels_sen = row.labels
+            for sentence in sentences_statement:
+                tokens_sen, index_sen = simple_tokenizer(sentence)
+                sentences_tokens.append(full_tokens_sen[:len(tokens_sen)])
+                full_tokens_sen = full_tokens_sen[len(tokens_sen):]
+                sentences_labels.append(full_labels_sen[:len(tokens_sen)])
+                full_labels_sen = full_labels_sen[len(tokens_sen):]
+        return sentences_tokens, sentences_labels
+
+    #from https: // huggingface.co / docs / transformers / tasks / token_classification
     def _tokenize_and_align_labels(self, statement, tokenizer_path):
+        """
+        Map the tokens to token-ids and give the subtokens -100 (they don't influence the model in the learning process, no impact on interference)
+
+        Parameters:
+        statement (dict): contains the word tokens
+        tokenizer_path (str): path to the tokenizer
+
+        Returns:
+        Dateset: With "tokens", "labels" - contains the token-ids and the -100, "input_ids", "token_type_ids", "attention_mask"
+        """
         model_tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
         tokenized_inputs = model_tokenizer(statement["tokens"], truncation=True, is_split_into_words=True)
 
@@ -211,6 +276,7 @@ class HuggingFaceFramework(Framework):
         tokenized_inputs["labels"] = labels
         return tokenized_inputs
 
+    '''
     def _align_labels_with_tokens(self,labels, word_ids):
         new_labels = []
         current_word = None
@@ -232,8 +298,9 @@ class HuggingFaceFramework(Framework):
                 new_labels.append(label)
 
         return new_labels
+    '''
 
-    def compute_metrics(self,p, label_list):
+    def _compute_metrics(self, p, label_list):
         seqeval = load("seqeval")
         predictions, labels = p
         predictions = np.argmax(predictions, axis=2)
@@ -255,7 +322,7 @@ class HuggingFaceFramework(Framework):
             "accuracy": results["overall_accuracy"],
         }
 
-    # diese Funktion für alle Framework Klassen abstrakt machen
+    # make this for all framework classes abstract
     def _convert_metrics(self, metrics, duration):
         print(duration)
         return TrainingResults(f1=metrics["eval_f1"], recall=metrics["eval_recall"], precision=metrics["eval_precision"], duration=duration, accuracy=metrics["eval_accuracy"])

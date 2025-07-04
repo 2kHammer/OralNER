@@ -19,16 +19,14 @@ class TrainingData:
     path: str
     upload_date : str
 
-entities = {
-    "PER":1,
-    "ROLE":2,
-    "ORG":3,
-    "LOC":4,
-    "WORK_OF_ART":5,
-    "NORP":6,
-    "EVENT":7,
-    "DATE":8
-}
+def simple_split_sentences(text):
+    doc = DataRegistry.nlp(text)
+    sentence_indexes = []
+    sentences = []
+    for sent in doc.sents:
+        sentences.append(sent.text)
+        sentence_indexes.append((sent.start, sent.end))
+    return sentences, sentence_indexes
 
 def simple_tokenizer(text):
     doc = DataRegistry.nlp.tokenizer(text)
@@ -89,8 +87,7 @@ class DataRegistry:
         else:
             return None
 
-    # prüft quasi auch ob dies das richtige Format besitzt
-    # works mit Path for now, has to be changed to file later
+    # check the adg-format
     def save_training_data(self, file, path_to_save, filename):
         try:
             adg_rows = self._read_convert_adg_file(file)
