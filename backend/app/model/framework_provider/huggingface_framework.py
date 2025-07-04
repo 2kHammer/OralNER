@@ -1,13 +1,12 @@
 from lib2to3.btm_utils import tokens
 
-from .framework import Framework
+from .framework import Framework, FrameworkNames
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline, DataCollatorForTokenClassification, TrainingArguments, Trainer
 from datasets import Dataset, DatasetDict
 from evaluate import load
-from seqeval.metrics import precision_score, recall_score, f1_score, accuracy_score
-import numpy as np
+ import numpy as np
 
-from app.model.data_provider.data_registry import simple_split_sentences, simple_tokenizer
+from app.model.data_provider.data_registry import simple_split_sentences, simple_tokenizer, data_registry
 from app.model.data_provider.adg_row import ADGRow
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.helpers import delete_checkpoints_folder
@@ -37,6 +36,8 @@ class HuggingFaceFramework(Framework):
     def load_model(self, model):
         if not isinstance(model, NERModel):
             raise TypeError("Expects an object of type NERModel")
+        if model.framework_name != FrameworkNames.HUGGINGFACE:
+            raise TypeError("Expects an model for HuggingFace")
         self.ner_model = model
         self.model = AutoModelForTokenClassification.from_pretrained(model.storage_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model.storage_path)
@@ -55,7 +56,7 @@ class HuggingFaceFramework(Framework):
             ner_results.append(nlp(text))
         return ner_results
 
-    def prepare_training_data(self, rows, tokenizer_path, train_size=0.7, validation_size=0.1, test_size=0.2, split_sentences=False):
+    def prepare_training_data(self, rows, tokenizer_path, train_size=0.8, validation_size=0.1, test_size=0.1, split_sentences=False):
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
 
@@ -67,7 +68,7 @@ class HuggingFaceFramework(Framework):
         data = None
         # change statements to sentences and create the dataset
         if split_sentences:
-            sentences_tokens, sentences_labels = self._split_training_data_sentences(rows)
+            sentences_tokens, sentences_labels = data_registry.split_training_data_sentences(rows)
             data = Dataset.from_list(
                 [{"tokens": sen_tokens, "labels": [label_id[label] for label in sentences_labels[i+1]]} for i, sen_tokens in enumerate(sentences_tokens[1:])])
         else:
@@ -143,7 +144,7 @@ class HuggingFaceFramework(Framework):
 
     # split function
     # add a less strict type comparison, without B- and I-
-    def convert_ner_results(self,ner_results, ner_input):
+    def convert_ner_results(self,ner_results, ner_input, annoted_labels=None):
         if isinstance(ner_input[0], ADGRow):
             return self._convert_ner_results_adg(ner_results, ner_input)
         else:
@@ -180,12 +181,7 @@ class HuggingFaceFramework(Framework):
             annoted_labels.append(adg_row.labels)
 
         # calc metrics
-        metrics = {
-            "f1": f1_score(annoted_labels, predicted_labels),
-            "recall": recall_score(annoted_labels, predicted_labels),
-            "precision": precision_score(annoted_labels, predicted_labels),
-            "accuracy": accuracy_score(annoted_labels, predicted_labels)
-        }
+        metrics = self._calc_metrics(annoted_labels,predicted_labels)
         return tokens, predicted_labels, metrics
 
     def _convert_ner_results_not_adg(self, ner_results, ner_input):
@@ -224,21 +220,6 @@ class HuggingFaceFramework(Framework):
             tokens.append(tokens_sentence)
             predicted_labels.append(labels_sentence)
         return tokens, predicted_labels
-
-    def _split_training_data_sentences(self,rows):
-        sentences_tokens = []
-        sentences_labels = []
-        for row in rows:
-            sentences_statement, sentences_indexes_statement = simple_split_sentences(row.text)
-            full_tokens_sen = row.tokens
-            full_labels_sen = row.labels
-            for sentence in sentences_statement:
-                tokens_sen, index_sen = simple_tokenizer(sentence)
-                sentences_tokens.append(full_tokens_sen[:len(tokens_sen)])
-                full_tokens_sen = full_tokens_sen[len(tokens_sen):]
-                sentences_labels.append(full_labels_sen[:len(tokens_sen)])
-                full_labels_sen = full_labels_sen[len(tokens_sen):]
-        return sentences_tokens, sentences_labels
 
     #from https: // huggingface.co / docs / transformers / tasks / token_classification
     def _tokenize_and_align_labels(self, statement, tokenizer_path):

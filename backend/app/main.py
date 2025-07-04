@@ -12,7 +12,7 @@ from model.ner_model_provider.model_registry import ModelRegistry
 from model.ner_model_provider.ner_model import NERModel
 from app.model.framework_provider.huggingface_framework import HuggingFaceFramework
 from app.model.data_provider.data_registry import data_registry
-
+from flair.models import SequenceTagger
 def run_test():
     
 
@@ -88,3 +88,6 @@ if __name__ == '__main__':
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
         return response
+    
+
+

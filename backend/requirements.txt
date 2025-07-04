@@ -7,3 +7,4 @@ evaluate
 Flask
 flask-cors
 huggingface_hub
+flair==0.15.1

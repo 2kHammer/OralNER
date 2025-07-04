@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from seqeval.metrics import precision_score, recall_score, f1_score, accuracy_score
 
 class FrameworkNames(Enum):
     HUGGINGFACE = 1
@@ -29,7 +30,7 @@ class Framework(ABC):
 
     # think about if the texts should be automatically be splitted into sentences
     @abstractmethod
-    def apply_ner(self, text):
+    def apply_ner(self, texts):
         """
         Applies NER with the loaded model on `text`
 
@@ -37,12 +38,12 @@ class Framework(ABC):
         text ([str]): List of the statements on which NER is sequential applied. The statements can't be bigger than the max token size (512 tokens for BERT).
 
         Returns:
-        []: The NER-Result for each statement in the framework-specific style.
+        The NER-Result for each statement in the framework-specific style.
         """
         pass
 
     @abstractmethod
-    def prepare_training_data(self,rows, tokenizer_path, train_size=0.8, validation_size=0, test_size=0.2, split_sentences=False):
+    def prepare_training_data(self,rows, tokenizer_path, train_size=0.8, validation_size=0.1, test_size=0.1, split_sentences=False):
         """
         Convert the rows to the framework specific finetuning/training format
 
@@ -78,7 +79,7 @@ class Framework(ABC):
         pass
 
     @abstractmethod
-    def convert_ner_results(self,ner_results, ner_input):
+    def convert_ner_results(self,ner_results, ner_input, annoted_labels=None):
         """
         Converts the framework-specific `ner-results` to BIO-format. If the input data is in the format List[ADGRow], you receive metrics.
 
@@ -90,3 +91,11 @@ class Framework(ABC):
         (List, List, Dict): First List contains the tokens, second the predicted lables and the dict the metrics
         """
         pass
+
+    def _calc_metrics(self, annoted_labels, predicted_labels):
+        return {
+            "f1": round(float(f1_score(annoted_labels, predicted_labels)),2),
+            "recall": round(float(recall_score(annoted_labels, predicted_labels)),2),
+            "precision": round(float(precision_score(annoted_labels, predicted_labels)),2),
+            "accuracy": round(float(accuracy_score(annoted_labels, predicted_labels)),2)
+        }

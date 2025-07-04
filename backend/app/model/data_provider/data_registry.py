@@ -65,7 +65,9 @@ class DataRegistry:
     # only supported format is the adg-format or normal text
     # bert Modelle have a maximal input of 512 tokens -> rest is cut
     # every interview statement is processed sequential
+        # split into sentences
     # split in two functions
+    # only convert a file over the framework
     def prepare_data_with_labels(self, data_to_process):
         return self._read_convert_adg_file(data_to_process)
 
@@ -101,6 +103,21 @@ class DataRegistry:
     def get_training_data_name(self, id):
         index = self._get_index_trainingsdata_id(id)
         return self._datasets[index].name
+    
+    def split_training_data_sentences(self,rows):
+        sentences_tokens = []
+        sentences_labels = []
+        for row in rows:
+            sentences_statement, sentences_indexes_statement = simple_split_sentences(row.text)
+            full_tokens_sen = row.tokens
+            full_labels_sen = row.labels
+            for sentence in sentences_statement:
+                tokens_sen, index_sen = simple_tokenizer(sentence)
+                sentences_tokens.append(full_tokens_sen[:len(tokens_sen)])
+                full_tokens_sen = full_tokens_sen[len(tokens_sen):]
+                sentences_labels.append(full_labels_sen[:len(tokens_sen)])
+                full_labels_sen = full_labels_sen[len(tokens_sen):]
+        return sentences_tokens, sentences_labels
 
     def _read_convert_adg_file(self, file):
         reader = csv.reader(file, delimiter=';')

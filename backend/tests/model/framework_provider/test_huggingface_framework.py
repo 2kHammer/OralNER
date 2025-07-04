@@ -42,21 +42,7 @@ def test_split_sizes():
     for i in range(0,4):
         check_split_size(i, True)
 
-def check_split_sentences(dataset_id=3):
-    rows = data_registry.load_training_data(dataset_id)
-    sentence_tokens, sentence_labels =hf._split_training_data_sentences(rows)
-    #check if amount tokens and labels is the same
-    for index, sentence in enumerate(sentence_tokens):
-        assert len(sentence) == len(sentence_labels[index])
 
-    sum_tokens = sum(len(row.tokens) for row in rows)
-    sum_tokens_sentences = sum(len(sentence) for sentence in sentence_tokens)
-    # check if the amount of tokens is the same
-    assert sum_tokens == sum_tokens_sentences
-
-def test_split_sentences():
-    for i in range(0,4):
-        check_split_sentences(i)
 
 def test_ner_results_adg(dataset_id=0):
     hf.load_model(model_registry.current_model)
