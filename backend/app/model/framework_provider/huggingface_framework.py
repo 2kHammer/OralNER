@@ -56,7 +56,7 @@ class HuggingFaceFramework(Framework):
             ner_results.append(nlp(text))
         return ner_results
 
-    def prepare_training_data(self, rows, tokenizer_path, train_size=0.8, validation_size=0.1, test_size=0.1, split_sentences=False):
+    def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.1, test_size=0.1, split_sentences=False):
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
 

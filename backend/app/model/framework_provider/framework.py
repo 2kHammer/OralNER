@@ -43,7 +43,7 @@ class Framework(ABC):
         pass
 
     @abstractmethod
-    def prepare_training_data(self,rows, tokenizer_path, train_size=0.8, validation_size=0.1, test_size=0.1, split_sentences=False):
+    def prepare_training_data(self,rows, tokenizer_path=None, train_size=0.8, validation_size=0.1, test_size=0.1, split_sentences=False):
         """
         Convert the rows to the framework specific finetuning/training format
 
@@ -56,7 +56,7 @@ class Framework(ABC):
         split_sentences (bool): Should the statements be split for finetuning
 
         Returns:
-        (dict, dict): First dict contains the split data, second contains the entity types with their numbers
+        (any, dict): first object contains the split data in the framework specific format, second contains the entity types with their numbers
         """
         pass
     

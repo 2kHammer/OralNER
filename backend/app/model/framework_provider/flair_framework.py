@@ -1,12 +1,15 @@
-from flair.data import Sentence
+from flair.data import Sentence, Corpus
+from flair.datasets import ColumnCorpus
 from sympy import false
+import random
+from flair.models import SequenceTagger
+from flair.trainers import ModelTrainer
 
 from app.model.data_provider.adg_row import ADGRow
 from app.model.data_provider.data_registry import data_registry
 from app.model.framework_provider.framework import Framework, FrameworkNames
-from flair.models import SequenceTagger
-
 from app.model.ner_model_provider.ner_model import NERModel
+from app.utils.config import CONLL_PATH
 
 
 class FlairFramework(Framework):
@@ -17,7 +20,11 @@ class FlairFramework(Framework):
 
     @property
     def default_finetuning_params(self):
-        pass
+        return {
+            "learning_rate": 0.1,
+            "mini_batch_size": 16,
+            "max_epochs": 10,
+        }
 
     def load_model(self, model):
         if not isinstance(model, NERModel):
@@ -66,24 +73,65 @@ class FlairFramework(Framework):
 
         return results, tokens
 
-    def prepare_training_data(self, rows, tokenizer_path, train_size=0.8, validation_size=0.1, test_size=0.1,
+    # can the data be loaded to keep the context of the sentences
+    # the sentences contain a next and previous sentences object?
+    def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.1, test_size=0.1,
                               split_sentences=False):
-        tokens, labels = data_registry.split_training_data_sentences(rows)#
+        if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
+            raise TypeError("Expects an object of type ADGRow")
+
+        #make corpus of sentences,
+        # Problem: sentences from statements are parted in the three datasets
+        tokens = None
+        labels = None
+        if split_sentences:
+            #statements shouldn't be split across datasets
+            tokens, labels = data_registry.split_training_data_sentences(rows)
+        else:
+            tokens = [row.tokens for row in rows]
+            labels  = [row.labels for row in rows]
+
+        '''
         sentences = []
         for index, token_sen in enumerate(tokens):
             sen = Sentence(token_sen, use_tokenizer=False)
             for label_index,label in enumerate(labels[index]):
                 if label != "O":
-                    sen.add_label("ner",label,label_index)
+                    sen.tokens[label_index].add_label("ner",label)
             sentences.append(sen)
+        train, valid, test = train_test_split(sentences, train_size,validation_size, test_size)
+        '''
+        tokens_with_labels = [{"tokens":token, "labels":labels[index]}for index,token in enumerate(tokens)]
+        train, valid, test = train_test_split(tokens_with_labels, train_size,validation_size, test_size)
+        self._create_conll_files(train, valid, test)
+        corpus = ColumnCorpus(CONLL_PATH,{0:'text',1:'ner'},train_file="train.txt",dev_file="valid.txt",test_file="test.txt")
+        return corpus, corpus.make_label_dictionary(label_type="ner")
 
 
-
-
-
-
+    #Source: https://flairnlp.github.io/flair/v0.14.0/tutorial/tutorial-training/how-to-train-sequence-tagger.html
+    # Optimation: document label features with transformer embeddings : https://arxiv.org/pdf/2011.06993
+    # means -> the next / previous sentence object is for our case irrelevant
     def finetune_ner_model(self, base_model_path, data_dict, label_id, name, new_model_path, params=None):
-        pass
+        if params is None:
+            params = self.default_finetuning_params
+
+        base_model = SequenceTagger.load(base_model_path)
+
+        #train new bilstm-crf classification layer, finetune the embeddings of the base model
+        finetuned_model = SequenceTagger(hidden_size=256,
+                                         embeddings=base_model.embeddings,
+                                         tag_dictionary=label_id,
+                                         tag_type="ner",
+                                         use_crf=True)
+
+        print(finetuned_model)
+        trainer = ModelTrainer(finetuned_model, data_dict)
+        trainer.fine_tune(
+            base_path=new_model_path+"/Name",
+            learning_rate=params["learning_rate"],
+            mini_batch_size=params["mini_batch_size"],
+            max_epochs=params["max_epochs"]
+        )
 
     # abstract eventually
     def convert_ner_results(self, ner_results, ner_input, annoted_labels=None):
@@ -109,3 +157,34 @@ class FlairFramework(Framework):
                     label_sentence[i]="I-"+typ
             labels.append(label_sentence)
         return tokens, labels
+
+    def _create_conll_files(self, train, valid, test):
+        tokens_train = [t["tokens"] for t in train]
+        labels_train = [t["labels"] for t in train]
+        save_to_conll(tokens_train, labels_train, CONLL_PATH+"/train.txt")
+        tokens_valid = [t["tokens"] for t in valid]
+        labels_valid = [t["labels"] for t in valid]
+        save_to_conll(tokens_valid, labels_valid, CONLL_PATH+"/valid.txt")
+        tokens_test = [t["tokens"] for t in test]
+        labels_test = [t["labels"] for t in test]
+        save_to_conll(tokens_test, labels_test, CONLL_PATH+"/test.txt")
+
+
+# evtl. abstract to framework or move to utils
+def train_test_split(data, train_size=0.8, valid_size=0.1,test_size=0.1, seed=True):
+    if seed:
+        random.seed(42)
+    shuffled = data.copy()
+    random.shuffle(shuffled)
+    n = len(shuffled)
+    train_end = int(n*train_size)
+    valid_end = int(n*(valid_size+train_size))
+    return shuffled[:train_end], shuffled[train_end:valid_end], shuffled[valid_end:]
+
+def save_to_conll(tokens, labels, path_to_save):
+    with open(path_to_save, "w", encoding="utf-8") as f:
+        for token_sentence, label_sentence in zip(tokens, labels):
+            for token, label in zip(token_sentence, label_sentence):
+                f.write(f"{token} {label}\n")
+            f.write("\n")
+

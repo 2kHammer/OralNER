@@ -11,7 +11,7 @@ DEFAULT_TOKENIZER_PATH = os.path.abspath(os.path.join(BASE_MODELS_PATH,"NLP","de
 MODIFIED_MODELS_PATH = os.path.abspath(os.path.join(MODELS_PATH,"modified"))
 MODEL_METADATA_PATH = os.path.abspath(os.path.join(MODELS_PATH,"models_metadata.json"))
 TRAININGSDATA_METADATA_PATH = os.path.abspath(os.path.join(TRAININGSDATA_PATH,"trainingsdata_metadata.json"))
-
+CONLL_PATH = os.path.abspath(os.path.join(TRAININGSDATA_PATH,"CoNLL"))
 '''
     model_name = "mschiesser/ner-bert-german"
     model_name_save = "mschiesser_ner-bert-german"
