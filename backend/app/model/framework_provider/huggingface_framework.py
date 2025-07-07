@@ -4,7 +4,7 @@ from .framework import Framework, FrameworkNames
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline, DataCollatorForTokenClassification, TrainingArguments, Trainer
 from datasets import Dataset, DatasetDict
 from evaluate import load
- import numpy as np
+import numpy as np
 
 from app.model.data_provider.data_registry import simple_split_sentences, simple_tokenizer, data_registry
 from app.model.data_provider.adg_row import ADGRow

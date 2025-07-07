@@ -107,11 +107,15 @@ upload.addEventListener('submit', async(e) => {
     labelNERState.innerHTML = "NER wird angewandt";
     labelNERState.style.color = "red"
     let res = await applyNERFile(formData)
-    labelNERState.innerHTML = `NER abgeschlossen - F1: ${res[2].f1.toFixed(2)}, Precision: ${res[2].precision.toFixed(2)}, Recall: ${res[2].recall.toFixed(2)}, Genauigkeit: ${res[2].accuracy.toFixed(2)}`;
-    labelNERState.style.color = "green"
-    tokens = res[0];
-    labels = res[1];
-    buttonExportsResults.disabled = false;
+    if (res){
+        labelNERState.innerHTML = `NER abgeschlossen - F1: ${res[2].f1.toFixed(2)}, Precision: ${res[2].precision.toFixed(2)}, Recall: ${res[2].recall.toFixed(2)}, Genauigkeit: ${res[2].accuracy.toFixed(2)}`;
+        labelNERState.style.color = "green"
+        tokens = res[0];
+        labels = res[1];
+        buttonExportsResults.disabled = false;
+    } else {
+        labelNERState.innerHTML = `Fehler beim Anwenden von NER`
+    }
 })
 
 function createExportFile(){

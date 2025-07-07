@@ -23,6 +23,12 @@ def test_load_apply_model(model_id=3, training_data_id=0, size_test=50):
                 if ent["start_token"] == ent["end_token"]:
                     assert ent["text"] == tokens[index][ent["start_token"]]
 
+def test_load_modified_model(model_id=4):
+    ff = FlairFramework()
+    old_model = ff.model
+    ff.load_model(model_registry.list_model(model_id))
+    assert old_model != ff.model
+
 def test_convert_ner_results_not_adg(model_id=3, training_data_id=1, size_test=100):
     ff = FlairFramework()
     ff.load_model(model_registry.list_model(model_id))
@@ -39,6 +45,15 @@ def test_convert_ner_results_not_adg(model_id=3, training_data_id=1, size_test=1
         for index_label,label in enumerate(label_sen):
             if label != "O":
                 assert index_label in indexes_labels
+
+def test_ner_adg(model_id=3,training_data_id=3):
+    adg_rows = data_registry.load_training_data(training_data_id)
+    sentences = [to.text for to in adg_rows]
+    annoted_labels = [row.labels for row in adg_rows]
+    ff = FlairFramework()
+    ff.load_model(model_registry.list_model(model_id))
+    entities = ff.apply_ner(sentences)
+    ff.convert_ner_results(entities, sentences, annoted_labels)
 
 def test_apply_ner_with_labels(model_id=3, training_data_id=2, size_test=100):
     ff = FlairFramework()
@@ -76,12 +91,18 @@ def test_prepare_training_data(model_id=3,training_data_id=2,size_test=100):
 
 def test_finetune_model(model_id=3,training_data_id=1):
     ff = FlairFramework()
+    test_params ={
+        "learning_rate": 0.0025,
+        "mini_batch_size": 64,
+        "max_epochs": 1,
+    }
     base_model = model_registry.list_model(model_id)
     ff.load_model(base_model)
+    modified_name = "FlairThirdTry"
+    modified_model =model_registry.create_modified_model(modified_name, base_model)
     rows = data_registry.load_training_data(training_data_id)
-    corpus, label_dict = ff.prepare_training_data(rows)
-    ff.finetune_ner_model(base_model.storage_path, corpus, label_dict,"FlairFirstTry",MODIFIED_MODELS_PATH)
-
+    corpus, label_dict = ff.prepare_training_data(rows[0:50])
+    ff.finetune_ner_model(base_model.storage_path, corpus, label_dict,modified_name,MODIFIED_MODELS_PATH, params=test_params)
 
 def test_train_test_split(train_size=0.8, valid_size=0.1,test_size=0.1):
     test_data = [1]*int(100*train_size) + [2]*int(100*(valid_size+test_size))

@@ -1,6 +1,7 @@
 from threading import Thread
 
 from app.model.data_provider.data_registry import data_registry
+from app.model.framework_provider.flair_framework import FlairFramework
 from app.model.framework_provider.huggingface_framework import HuggingFaceFramework
 from app.model.ner_model_provider.model_registry import model_registry
 
@@ -9,13 +10,15 @@ def ner(content, with_file):
     framework = None
     if framework_name.name == 'HUGGINGFACE':
         framework = HuggingFaceFramework()
+    elif framework_name.name == 'FLAIR':
+        framework = FlairFramework()
 
     framework.load_model(model_registry.current_model)
     sentences = None
     adg_rows = None
     if with_file:
         adg_rows = data_registry.prepare_data_with_labels(content)
-        sentences = [to.text for to in adg_rows]
+        sentences = [to.tokens for to in adg_rows]
     else:
         sentences = data_registry.prepare_data_without_labels(content)
     entities =framework.apply_ner(sentences)
@@ -23,7 +26,9 @@ def ner(content, with_file):
     labels = None
     metrics = None
     if with_file:
-        tokens,labels,metrics = framework.convert_ner_results(entities, adg_rows)
+        #for flair - will be useful if data is splitted into sentences
+        annoted_labels = [row.labels for row in adg_rows]
+        tokens,labels,metrics = framework.convert_ner_results(entities, adg_rows,annoted_labels)
     else:
         tokens, labels, metrics = framework.convert_ner_results(entities, sentences)
     return tokens, labels, metrics
@@ -38,6 +43,8 @@ def finetune_ner(model_id, dataset_id, new_model_name):
         framework = None
         if base_model.framework_name.name == 'HUGGINGFACE':
             framework = HuggingFaceFramework()
+        elif base_model.framework_name.name == 'FLAIR':
+            framework = FlairFramework()
         training_dataset_rows = data_registry.load_training_data(dataset_id)
         data, label_id = framework.prepare_training_data(training_dataset_rows,base_model.storage_path)
         results, args = framework.finetune_ner_model(base_model.storage_path,data,label_id,new_model_name,modified_model.storage_path)

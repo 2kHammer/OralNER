@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+import random
 from seqeval.metrics import precision_score, recall_score, f1_score, accuracy_score
 
 class FrameworkNames(Enum):
@@ -99,3 +100,13 @@ class Framework(ABC):
             "precision": round(float(precision_score(annoted_labels, predicted_labels)),2),
             "accuracy": round(float(accuracy_score(annoted_labels, predicted_labels)),2)
         }
+
+    def _train_test_split(self,data, train_size=0.8, valid_size=0.1, test_size=0.1, seed=True):
+        if seed:
+            random.seed(42)
+        shuffled = data.copy()
+        random.shuffle(shuffled)
+        n = len(shuffled)
+        train_end = int(n * train_size)
+        valid_end = int(n * (valid_size + train_size))
+        return shuffled[:train_end], shuffled[train_end:valid_end], shuffled[valid_end:]

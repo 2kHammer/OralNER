@@ -1,14 +1,18 @@
+import os
+import time
+
 from flair.data import Sentence, Corpus
 from flair.datasets import ColumnCorpus
 from sympy import false
 import random
 from flair.models import SequenceTagger
 from flair.trainers import ModelTrainer
+from torch.utils.checkpoint import checkpoint
 
 from app.model.data_provider.adg_row import ADGRow
 from app.model.data_provider.data_registry import data_registry
 from app.model.framework_provider.framework import Framework, FrameworkNames
-from app.model.ner_model_provider.ner_model import NERModel
+from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.config import CONLL_PATH
 
 
@@ -21,9 +25,9 @@ class FlairFramework(Framework):
     @property
     def default_finetuning_params(self):
         return {
-            "learning_rate": 0.1,
-            "mini_batch_size": 16,
-            "max_epochs": 10,
+            "learning_rate": 0.0025,
+            "mini_batch_size": 64,
+            "max_epochs": 20,
         }
 
     def load_model(self, model):
@@ -32,7 +36,8 @@ class FlairFramework(Framework):
         if model.framework_name != FrameworkNames.FLAIR:
             raise TypeError("Expects an model for Flair")
         self.ner_model = model
-        self.model = SequenceTagger.load(model.storage_path)
+        file_path = self._get_pt_file(model.storage_path)
+        self.model = SequenceTagger.load(file_path)
 
     #input has to be in sentences - check this
     # abstract type checks
@@ -102,7 +107,7 @@ class FlairFramework(Framework):
         train, valid, test = train_test_split(sentences, train_size,validation_size, test_size)
         '''
         tokens_with_labels = [{"tokens":token, "labels":labels[index]}for index,token in enumerate(tokens)]
-        train, valid, test = train_test_split(tokens_with_labels, train_size,validation_size, test_size)
+        train, valid, test = self._train_test_split(tokens_with_labels, train_size,validation_size, test_size)
         self._create_conll_files(train, valid, test)
         corpus = ColumnCorpus(CONLL_PATH,{0:'text',1:'ner'},train_file="train.txt",dev_file="valid.txt",test_file="test.txt")
         return corpus, corpus.make_label_dictionary(label_type="ner")
@@ -115,7 +120,7 @@ class FlairFramework(Framework):
         if params is None:
             params = self.default_finetuning_params
 
-        base_model = SequenceTagger.load(base_model_path)
+        base_model = SequenceTagger.load(self._get_pt_file(base_model_path))
 
         #train new bilstm-crf classification layer, finetune the embeddings of the base model
         finetuned_model = SequenceTagger(hidden_size=256,
@@ -125,13 +130,19 @@ class FlairFramework(Framework):
                                          use_crf=True)
 
         print(finetuned_model)
+        start = time.time()
         trainer = ModelTrainer(finetuned_model, data_dict)
         trainer.fine_tune(
-            base_path=new_model_path+"/Name",
+            base_path=new_model_path+"/"+name,
             learning_rate=params["learning_rate"],
             mini_batch_size=params["mini_batch_size"],
-            max_epochs=params["max_epochs"]
+            max_epochs=params["max_epochs"],
         )
+        end = time.time()
+        result =trainer.model.evaluate(data_dict.test, gold_label_type="ner")
+        class_report_micro = result.classification_report["micro avg"]
+        train_res = TrainingResults(class_report_micro["f1-score"],class_report_micro["precision"],class_report_micro["recall"],end-start,result.scores["accuracy"])
+        return train_res, params
 
     # abstract eventually
     def convert_ner_results(self, ner_results, ner_input, annoted_labels=None):
@@ -169,17 +180,11 @@ class FlairFramework(Framework):
         labels_test = [t["labels"] for t in test]
         save_to_conll(tokens_test, labels_test, CONLL_PATH+"/test.txt")
 
-
-# evtl. abstract to framework or move to utils
-def train_test_split(data, train_size=0.8, valid_size=0.1,test_size=0.1, seed=True):
-    if seed:
-        random.seed(42)
-    shuffled = data.copy()
-    random.shuffle(shuffled)
-    n = len(shuffled)
-    train_end = int(n*train_size)
-    valid_end = int(n*(valid_size+train_size))
-    return shuffled[:train_end], shuffled[train_end:valid_end], shuffled[valid_end:]
+    def _get_pt_file(self,path):
+        for file in os.listdir(path):
+            if file.endswith(".pt"):
+                return os.path.join(path,file)
+        return None
 
 def save_to_conll(tokens, labels, path_to_save):
     with open(path_to_save, "w", encoding="utf-8") as f:

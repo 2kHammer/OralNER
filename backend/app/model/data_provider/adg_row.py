@@ -25,7 +25,7 @@ def extract_ADG_row(row, nlp,idx):
 
     Parameters:
         -row: string of one ADG ROW
-        -tokenizer: spacy tokenizer
+        -tokenizer: Spacy tokenizer
 
     Returns:
         - ADGRow
