@@ -3,6 +3,7 @@ from threading import Thread
 from app.model.data_provider.data_registry import data_registry
 from app.model.framework_provider.flair_framework import FlairFramework
 from app.model.framework_provider.huggingface_framework import HuggingFaceFramework
+from app.model.framework_provider.spacy_framework import SpacyFramework
 from app.model.ner_model_provider.model_registry import model_registry
 
 def ner(content, with_file):
@@ -12,23 +13,29 @@ def ner(content, with_file):
         framework = HuggingFaceFramework()
     elif framework_name.name == 'FLAIR':
         framework = FlairFramework()
+    elif framework_name.name == 'SPACY':
+        framework = SpacyFramework()
 
-    framework.load_model(model_registry.current_model)
     sentences = None
     adg_rows = None
     if with_file:
         adg_rows = data_registry.prepare_data_with_labels(content)
         sentences = [to.tokens for to in adg_rows]
+        # flair needs tokens
+        if framework_name.name == 'FLAIR':
+            sentences = [row.tokens for row in adg_rows]
+        else:
+            sentences = [row.text for row in adg_rows]
     else:
         sentences = data_registry.prepare_data_without_labels(content)
+    framework.load_model(model_registry.current_model)
     entities =framework.apply_ner(sentences)
     tokens = None
     labels = None
     metrics = None
     if with_file:
         #for flair - will be useful if data is splitted into sentences
-        annoted_labels = [row.labels for row in adg_rows]
-        tokens,labels,metrics = framework.convert_ner_results(entities, adg_rows,annoted_labels)
+        tokens,labels,metrics = framework.convert_ner_results(entities, adg_rows)
     else:
         tokens, labels, metrics = framework.convert_ner_results(entities, sentences)
     return tokens, labels, metrics

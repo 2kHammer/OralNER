@@ -1,7 +1,7 @@
 from itertools import chain
 
 from app.model.data_provider.data_registry import data_registry
-from app.model.framework_provider.flair_framework import FlairFramework, train_test_split
+from app.model.framework_provider.flair_framework import FlairFramework
 from app.model.framework_provider.framework import FrameworkNames
 from app.model.ner_model_provider.model_registry import model_registry
 from app.utils.config import MODIFIED_MODELS_PATH
@@ -46,23 +46,25 @@ def test_convert_ner_results_not_adg(model_id=3, training_data_id=1, size_test=1
             if label != "O":
                 assert index_label in indexes_labels
 
-def test_ner_adg(model_id=3,training_data_id=3):
+def test_ner_adg_no_sentence_split(model_id=3,training_data_id=3):
     adg_rows = data_registry.load_training_data(training_data_id)
-    sentences = [to.text for to in adg_rows]
-    annoted_labels = [row.labels for row in adg_rows]
+    sentences_token = [to.tokens for to in adg_rows]
     ff = FlairFramework()
     ff.load_model(model_registry.list_model(model_id))
-    entities = ff.apply_ner(sentences)
-    ff.convert_ner_results(entities, sentences, annoted_labels)
+    entities = ff.apply_ner(sentences_token)
+    tokens, labels, metrics =ff.convert_ner_results(entities, adg_rows)
+    expected_metrics = {'f1', 'recall', 'precision', 'accuracy'}
+    assert expected_metrics.issubset(metrics.keys())
 
-def test_apply_ner_with_labels(model_id=3, training_data_id=2, size_test=100):
+# split into sentences doesn't work now
+def test_apply_ner_with_labels_sentence_split(model_id=3, training_data_id=2, size_test=100):
     ff = FlairFramework()
     ff.load_model(model_registry.list_model(model_id))
     rows = data_registry.load_training_data(training_data_id)
     sentence_tokens, sentence_labels =data_registry.split_training_data_sentences(rows)
     ner_results, tokens =ff.apply_ner(sentence_tokens)
     assert sentence_tokens == tokens
-    tokens, predicted_labels, metrics = ff.convert_ner_results((ner_results,tokens),sentence_tokens,sentence_labels)
+    tokens, predicted_labels, metrics = ff.convert_ner_results((ner_results,tokens),rows)
     expected_metrics = {'f1','recall','precision','accuracy'}
     assert expected_metrics.issubset(metrics.keys())
 

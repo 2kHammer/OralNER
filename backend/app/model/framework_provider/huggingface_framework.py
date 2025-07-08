@@ -49,7 +49,6 @@ class HuggingFaceFramework(Framework):
 
         ner_results = []
         for text in texts:
-            #print(text)
             # maybe change the aggregation strategy
             # subtokens could be labeled as entities
             nlp = pipeline("ner",model=self.model,tokenizer=self.tokenizer, aggregation_strategy=None)
@@ -144,7 +143,7 @@ class HuggingFaceFramework(Framework):
 
     # split function
     # add a less strict type comparison, without B- and I-
-    def convert_ner_results(self,ner_results, ner_input, annoted_labels=None):
+    def convert_ner_results(self,ner_results, ner_input):
         if isinstance(ner_input[0], ADGRow):
             return self._convert_ner_results_adg(ner_results, ner_input)
         else:

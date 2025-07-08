@@ -87,6 +87,11 @@ function createEntityLegend(entityToColor, documentLegend){
     }
 }
 
+function resetVisualizingEntities(){
+    entityLegend.innerHTML = "";
+    textarea.innerHTML = "";
+}
+
 /*
  * Muss dies noch abändern das es über einen Job läuft und nachgefragt wird, ob verfügbar
  */
@@ -104,6 +109,7 @@ upload.addEventListener('submit', async(e) => {
     const formData = new FormData();
     formData.append("file", file);
 
+    resetVisualizingEntities();
     labelNERState.innerHTML = "NER wird angewandt";
     labelNERState.style.color = "red"
     let res = await applyNERFile(formData)

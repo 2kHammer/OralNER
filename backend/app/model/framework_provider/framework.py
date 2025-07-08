@@ -80,7 +80,7 @@ class Framework(ABC):
         pass
 
     @abstractmethod
-    def convert_ner_results(self,ner_results, ner_input, annoted_labels=None):
+    def convert_ner_results(self,ner_results, ner_input):
         """
         Converts the framework-specific `ner-results` to BIO-format. If the input data is in the format List[ADGRow], you receive metrics.
 
@@ -100,6 +100,22 @@ class Framework(ABC):
             "precision": round(float(precision_score(annoted_labels, predicted_labels)),2),
             "accuracy": round(float(accuracy_score(annoted_labels, predicted_labels)),2)
         }
+
+    # only für flair and spacy
+    def _convert_ner_results_to_format(self, ner_results):
+        results, tokens = ner_results
+        labels = []
+        for index, token_sentence in enumerate(tokens):
+            label_sentence = ["O"] * len(token_sentence)
+            for entity in results[index]:
+                start_token = entity["start_token"]
+                end_token = entity["end_token"]
+                typ = entity["type"]
+                label_sentence[start_token] = "B-" + typ
+                for i in range(start_token + 1, end_token + 1):
+                    label_sentence[i] = "I-" + typ
+            labels.append(label_sentence)
+        return tokens, labels
 
     def _train_test_split(self,data, train_size=0.8, valid_size=0.1, test_size=0.1, seed=True):
         if seed:

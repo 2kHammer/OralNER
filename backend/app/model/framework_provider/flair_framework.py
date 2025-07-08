@@ -133,7 +133,7 @@ class FlairFramework(Framework):
         start = time.time()
         trainer = ModelTrainer(finetuned_model, data_dict)
         trainer.fine_tune(
-            base_path=new_model_path+"/"+name,
+            base_path=new_model_path,
             learning_rate=params["learning_rate"],
             mini_batch_size=params["mini_batch_size"],
             max_epochs=params["max_epochs"],
@@ -145,29 +145,18 @@ class FlairFramework(Framework):
         return train_res, params
 
     # abstract eventually
-    def convert_ner_results(self, ner_results, ner_input, annoted_labels=None):
-        if annoted_labels != None:
-            tokens, predicted_labels =  self._convert_ner_results_to_format(ner_results, ner_input)
+    def convert_ner_results(self, ner_results, ner_input):
+        if isinstance(ner_input[0], ADGRow):
+            annoted_labels = [row.labels for row in ner_input]
+            tokens, predicted_labels =  self._convert_ner_results_to_format(ner_results)
             metrics = self._calc_metrics(annoted_labels, predicted_labels)
             return tokens, predicted_labels, metrics
         else:
-            tokens, predicted_labels = self._convert_ner_results_to_format(ner_results, ner_input)
+            tokens, predicted_labels = self._convert_ner_results_to_format(ner_results)
             return tokens, predicted_labels, None
 
-    def _convert_ner_results_to_format(self, ner_results, ner_input):
-        results, tokens = ner_results
-        labels = []
-        for index,token_sentence in enumerate(tokens):
-            label_sentence = ["O"]*len(token_sentence)
-            for entity in results[index]:
-                start_token = entity["start_token"]
-                end_token = entity["end_token"]
-                typ =entity["type"]
-                label_sentence[start_token]="B-"+typ
-                for i in range(start_token+1, end_token+1):
-                    label_sentence[i]="I-"+typ
-            labels.append(label_sentence)
-        return tokens, labels
+    #def _convert_ner_results_to_format(self, ner_results, ner_input):
+
 
     def _create_conll_files(self, train, valid, test):
         tokens_train = [t["tokens"] for t in train]
