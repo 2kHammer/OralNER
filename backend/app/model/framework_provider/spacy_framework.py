@@ -1,15 +1,18 @@
 import os
+import time
+from random import shuffle
 
 import spacy
+from spacy.scorer import Scorer
 from spacy.tokens import DocBin
 from spacy.training import Example
-from spacy.util import load_config
+from spacy.util import load_config, minibatch
 from spacy.cli.train import train
 from typing_extensions import override
 
 from app.model.data_provider.adg_row import ADGRow
 from app.model.framework_provider.framework import Framework, FrameworkNames
-from app.model.ner_model_provider.ner_model import NERModel
+from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.config import SPACY_TRAININGSDATA_PATH
 
 '''
@@ -25,7 +28,11 @@ class SpacyFramework(Framework):
 
     @property
     def default_finetuning_params(self):
-        pass
+        return {
+            'max_epochs': 0,
+            'max_steps': 200,
+            'eval_frequency': 20
+        }
 
     def load_model(self, model):
         if not isinstance(model, NERModel):
@@ -52,26 +59,88 @@ class SpacyFramework(Framework):
         train, valid, test  = self._train_test_split(rows, train_size, validation_size, test_size)
         self._bio_to_spacy(train,SPACY_TRAININGSDATA_PATH+"/train.spacy")
         self._bio_to_spacy(valid,SPACY_TRAININGSDATA_PATH+"/valid.spacy")
-
+        return None, None
+    
     def finetune_ner_model(self, base_model_path, data_dict, label_id, name, new_model_path, params=None):
-        config = load_config(self._get_correct_model_path(base_model_path)+"/config.cfg")
+        if params is None:
+            params = self.default_finetuning_params
+
+        correct_base_model_path = self._get_correct_model_path(base_model_path)
+        nlp = spacy.load(correct_base_model_path)
+        metrics = None
+        args = None
+        if "transformer" in nlp.pipe_names:
+            metrics, args =self._finetune_transformer_spacy(correct_base_model_path, new_model_path,params)
+        else:
+            metrics, args =self._finetune_default_spacy(correct_base_model_path, new_model_path)
+        return metrics, args
+
+    #https://medium.com/@zielemanj/training-and-fine-tuning-ner-transformer-models-using-spacy3-and-spacy-annotator-c3cd95fdfd23
+    def _finetune_transformer_spacy(self, correct_base_model_path, new_model_path, params):
+        correct_base_model_path = self._get_correct_model_path(correct_base_model_path)
+        config = load_config(correct_base_model_path+"/config.cfg")
         config["paths"]["train"] = SPACY_TRAININGSDATA_PATH+"/train.spacy"
         config["paths"]["dev"] = SPACY_TRAININGSDATA_PATH+"/valid.spacy"
-        config["training"]["max_steps"] = 600
-        new_config_path = self._get_correct_model_path(base_model_path)+"/train_config.cfg"
-        config.to_disk(new_config_path)
-        train(new_config_path, output_path=new_model_path)
+        config["training"]["max_epochs"] = params["max_epochs"]
+        config["training"]["max_steps"] = params["max_steps"]
+        config["training"]["eval_frequency"] = params["eval_frequency"]
+        if "factory" in config["components"]["ner"]:
+            config["components"]["ner"].pop("factory",None)
+        config["components"]["ner"]["source"] = correct_base_model_path
+        if "factory" in config["components"]["transformer"]:
+            config["components"]["transformer"].pop("factory",None)
+        config["components"]["transformer"]["source"] = correct_base_model_path
 
-    def _finetune_default_spacy(self, base_model_path):
-        nlp = spacy.load(self._get_correct_model_path(base_model_path))
+        new_config_path = correct_base_model_path+"/train_config.cfg"
+        config.to_disk(new_config_path)
+        start = time.time()
+        train(new_config_path, output_path=new_model_path)
+        end = time.time()
+        metrics =self._evaluate_transformer_model(self._get_correct_model_path(new_model_path))
+        metrics.duration = end-start
+        return metrics, params
+
+    def _finetune_default_spacy(self, correct_base_model_path, new_model_path, epochs=30, minibatch_size=16):
+        nlp = spacy.load(self._get_correct_model_path(correct_base_model_path))
+        train_examples = self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy", nlp)
+        valid_examples = self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy", nlp)
         # only train embedding and ner
+        start = time.time()
+        best_metrics = None
         frozen = [pipe for pipe in nlp.pipe_names if pipe not in ("tok2vec", "ner")]
         with nlp.disable_pipes(*frozen):
             optimizer = nlp.resume_training()
-            for iteration in range(20):
+            for iteration in range(epochs):
                 losses = {}
+                shuffle(train_examples)
+                batches = minibatch(train_examples, minibatch_size)
+                for batch in batches:
+                    nlp.update(batch, sgd=optimizer, losses=losses)
+                scores = self._evaluate_finetune_spacy(nlp, valid_examples)
+                metrics = TrainingResults(f1=scores["ents_f"],recall=scores["ents_r"],precision=scores["ents_p"],duration=None, accuracy=None)
 
+                if (best_metrics is None) or (metrics.f1 > best_metrics.f1):
+                    print("better model")
+                    best_metrics = metrics
+                    nlp.to_disk(new_model_path)
 
+        end = time.time()
+        best_metrics.duration = end - start
+        return best_metrics, {"epochs":epochs, "minibatch_size":minibatch_size}
+    
+    def _evaluate_transformer_model(self, path):
+        nlp = spacy.load(path)
+        valid_examples =self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy", nlp)
+        scores = self._evaluate_finetune_spacy(nlp, valid_examples)
+        return TrainingResults(f1=scores["ents_f"],recall=scores["ents_r"],precision=scores["ents_p"],duration=None, accuracy=None)
+        
+    def _evaluate_finetune_spacy(self, nlp, examples):
+        scorer = Scorer()
+        examples_with_ref = []
+        for example in examples:
+            pred = nlp(example.text)
+            examples_with_ref.append(Example(pred, example.reference))
+        return scorer.score(examples_with_ref)
 
     def convert_ner_results(self, ner_results, ner_input):
         if isinstance(ner_input[0], ADGRow):
@@ -138,5 +207,9 @@ class SpacyFramework(Framework):
     def _get_training_examples_docbin(self, path,nlp):
         doc_bin = DocBin().from_disk(path)
         docs = list(doc_bin.get_docs(nlp.vocab))
-        examples = [Example(doc, doc) for doc in docs]
+        examples = []
+        for doc in docs:
+            pred_doc = nlp.make_doc(doc.text)
+            examples.append(Example(pred_doc, doc))
+        refs = [example.reference.ents for example in examples]
         return examples

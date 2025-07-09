@@ -62,9 +62,13 @@ export function createModelTableVals(models){
       let trainingsData = undefined
       if (model.trainings.length > 0){
           let lastTrainingsIndex = model.trainings.length -1;
-          trainingsData = [model.trainings[lastTrainingsIndex].date, model.trainings[lastTrainingsIndex].dataset_name, model.trainings[lastTrainingsIndex].metrics.f1.toFixed(2),
-          model.trainings[lastTrainingsIndex].metrics.recall.toFixed(2), model.trainings[lastTrainingsIndex].metrics.precision.toFixed(2), model.trainings[lastTrainingsIndex].metrics.accuracy.toFixed(2),
-          model.trainings[lastTrainingsIndex].metrics.duration.toFixed(2)]
+          let metrics = model.trainings[lastTrainingsIndex].metrics;
+          trainingsData = [model.trainings[lastTrainingsIndex].date, model.trainings[lastTrainingsIndex].dataset_name, 
+          roundNumberReturnSpace(metrics.f1),
+          roundNumberReturnSpace(metrics.recall), 
+          roundNumberReturnSpace(metrics.precision), 
+          roundNumberReturnSpace(metrics.accuracy),
+          roundNumberReturnSpace(metrics.duration)]
       } else {
           trainingsData = ["","","","","","",""]
       }
@@ -72,6 +76,14 @@ export function createModelTableVals(models){
       modelVals.push(rowData)
   });
   return modelVals
+}
+
+function roundNumberReturnSpace(toCheck){
+  if (Number.isFinite(toCheck)){
+    return toCheck.toFixed(2)
+  } else {
+    ""
+  }
 }
 
 /*

@@ -7,10 +7,10 @@ from app.model.ner_model_provider.ner_model import NERModel
 from app.utils.config import BASE_MODELS_PATH
 
 
-def test_prepare_training_data(training_data_id=2):
+def test_prepare_training_data(training_data_id=3):
     rows = data_registry.load_training_data(training_data_id)
     sf = SpacyFramework()
-    sf.prepare_training_data(rows)
+    sf.prepare_training_data(rows, tokenizer_path=None, train_size=0.7, validation_size=0.3, test_size=0, split_sentences=False)
 
 def create_get_dummy_model(model_id):
     dummy = model_registry.list_model(model_id)
@@ -73,4 +73,22 @@ def test_finetune(base_model_id=8):
     sf = SpacyFramework()
     sf.finetune_ner_model(base_model.storage_path,None,None,modified_model.name,modified_model.storage_path,None)
 
-
+def test_finetune_default_spacy(base_model_id=7):
+    base_model = model_registry.list_model(base_model_id)
+    modified_model =model_registry.create_modified_model("TestSpacyDummy",base_model)
+    sf = SpacyFramework()
+    metrics, args = sf.finetune_ner_model(base_model.storage_path,None,None,modified_model.name,modified_model.storage_path,None)
+    assert metrics.f1 > 0
+    assert metrics.precision > 0
+    assert metrics.recall > 0
+    assert metrics.duration > 0
+    
+def test_evaluate_finetune_spacy(model_id=8):
+    #model = model_registry.list_model(model_id)
+    ff = SpacyFramework()
+    #metrics = ff._evaluate_transformer_model(ff._get_correct_model_path(model.storage_path))
+    metrics = ff._evaluate_transformer_model("/home/alex/Nextcloud3/Alex/Uni/Master/SoSe25/CBIE/OralNER/backend/app/store/NER-Models/modified/spacy-ner-bert-german-second/model-best")
+    print(metrics)
+    assert metrics.f1 > 0
+    assert metrics.precision > 0
+    assert metrics.recall > 0

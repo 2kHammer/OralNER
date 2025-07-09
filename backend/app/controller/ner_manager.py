@@ -52,6 +52,8 @@ def finetune_ner(model_id, dataset_id, new_model_name):
             framework = HuggingFaceFramework()
         elif base_model.framework_name.name == 'FLAIR':
             framework = FlairFramework()
+        elif base_model.framework_name.name == 'SPACY':
+            framework = SpacyFramework()
         training_dataset_rows = data_registry.load_training_data(dataset_id)
         data, label_id = framework.prepare_training_data(training_dataset_rows,base_model.storage_path)
         results, args = framework.finetune_ner_model(base_model.storage_path,data,label_id,new_model_name,modified_model.storage_path)
