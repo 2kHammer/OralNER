@@ -120,7 +120,7 @@ class DataRegistry:
         return sentences_tokens, sentences_labels
 
     def _read_convert_adg_file(self, file):
-        reader = csv.reader(file, delimiter=';')
+        reader = csv.reader(file, delimiter=';', quoting=csv.QUOTE_NONE)
         rows = []
         idx = 1
         for row in reader:

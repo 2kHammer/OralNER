@@ -82,18 +82,17 @@ def finetune():
     except Exception as e:
         abort(500, description="Internal Server Error: " + str(e))
 
-@api.route('trainingdata', methods=['POST'])
+@api.route('/trainingdata', methods=['POST'])
 def add_trainingsdata():
     try:
         if "file" in request.files:
             file = request.files["file"]
             filename = file.filename
-            data = request.get_json()
-            dataset_name = data.get("dataset_name","NoDatasetNameProvided")
+            dataset_name = request.form.get("dataset_name","NoDatasetNameProvided")
             decoded_file = file.read().decode("utf-8").splitlines()
-            add_data_ok =data_manager.add_training_data(dataset_name, filename,file)
+            add_data_ok =data_manager.add_training_data(dataset_name, filename,decoded_file)
             if add_data_ok:
-                return 201
+                return '',201
             else:
                 return jsonify({'error': 'no valid dataset format'}), 400
         else:

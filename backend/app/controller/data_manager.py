@@ -7,7 +7,7 @@ def get_training_data():
     return [asdict(td) for td in training_data]
 
 def add_training_data(dataset_name, filename, file):
-    if data_registry.add_training_data(file):
+    if data_registry.add_training_data(dataset_name, filename, file):
         return True
     else:
         return False

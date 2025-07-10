@@ -1,6 +1,7 @@
 import { getActiveModelname} from "../service-manager/modelManagement.js";
 import { initComparisonWindow } from "./modelComparison.js";
 import { initFinetuningWindow } from "./finetuneModel.js";
+import { resetUploadDataset } from "./uploadDataset.js";
 
 async function switchWindow(id) {
     // hide every window
@@ -15,6 +16,7 @@ async function switchWindow(id) {
 
     if (id == "home"){
       initHome();
+      resetUploadDataset();
     } else if (id == "finetuning"){
       await initFinetuningWindow();
     } else if (id == "comparison"){

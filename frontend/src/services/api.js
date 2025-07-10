@@ -78,3 +78,16 @@ export async function startFinetune(modelId, datasetId, name){
         return undefined;
     }
 }
+
+export async function uploadTrainingData(file, datasetName){
+    let formData = new FormData();
+    formData.append("file", file)
+    formData.append("dataset_name", datasetName)
+
+    const res =await fetch(`${API_BASE_URL}/trainingdata`, {method: 'POST', body: formData});
+    if (res.status != 201){
+        return false;
+    } else {
+        return true;
+    }
+}
