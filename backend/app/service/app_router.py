@@ -53,14 +53,30 @@ def apply_ner():
         if request.is_json:
             data = request.get_json()
             text = data['text']
-            tokens, labels, metrics = ner_manager.ner(text, False)
-            return jsonify([tokens,labels]), 200
+            job_id = ner_manager.start_ner(text, False)
+            return jsonify({"job_id":job_id}), 200
         elif "file" in request.files:
             file = request.files["file"]
             decoded_file = file.read().decode("utf-8").splitlines()
-            tokens, labels, metrics = ner_manager.ner(decoded_file, True)
-            return jsonify([tokens,labels,metrics]), 200
+            job_id = ner_manager.start_ner(decoded_file, True)
+            return jsonify({"job_id":job_id}), 200
         return jsonify({'error': 'No valid text or file provided'}), 400
+    except Exception as e:
+        abort(500, description="Internal Server Error: " + str(e))
+
+
+@api.route('/ner/<string:job_id>', methods=['GET'])
+def get_ner_job_result(job_id):
+    try:
+        result = ner_manager.get_ner_results(job_id)
+        if result is None:
+            return jsonify({"status": "processing"}), 202
+        else:
+            if result[2] == None:
+                result = result[0:2]
+            return jsonify({"status":"done","result":result}), 200
+    except KeyError as ke:
+        return jsonify({"error":"KeyError: "+str(ke)}), 404
     except Exception as e:
         abort(500, description="Internal Server Error: " + str(e))
 

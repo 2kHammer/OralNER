@@ -77,15 +77,27 @@ class DataRegistry:
 
 
     def add_training_data(self, dataset_name,filename, file):
+        # get the path
+        filename_new = filename.replace(".csv", ".json")
+        index_store = TRAININGSDATA_CONVERTED_PATH.find("app/")
+        rel_path = TRAININGSDATA_CONVERTED_PATH[index_store:]
+        new_path = rel_path + "/" + filename_new
+
         if self.save_training_data(file, TRAININGSDATA_CONVERTED_PATH, filename):
-            id = self._get_next_id()
-            filename_new = filename.replace(".csv",".json")
-            index_store = TRAININGSDATA_CONVERTED_PATH.find("app/")
-            rel_path = TRAININGSDATA_CONVERTED_PATH[index_store:]
-            training_data = TrainingData(id=id, name=dataset_name, path=rel_path+"/"+filename_new, upload_date=get_current_datetime())
-            self._datasets.append(training_data)
+
+            # overwrite dataset with the same path
+            paths = [ds.path for ds in self._datasets]
+            new_trainingsdata = None
+            if new_path in paths:
+                new_trainingsdata = self._datasets[paths.index(new_path)]
+                new_trainingsdata.name = dataset_name
+                new_trainingsdata.upload_date = get_current_datetime()
+            else:
+                id = self._get_next_id()
+                new_trainingsdata = TrainingData(id=id, name=dataset_name, path=new_path, upload_date=get_current_datetime())
+                self._datasets.append(new_trainingsdata)
             self._update_metadata()
-            return training_data
+            return new_trainingsdata
         else:
             return None
 

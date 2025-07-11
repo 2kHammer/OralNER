@@ -1,4 +1,4 @@
-import { applyNERText, applyNERFile } from "../../services/api.js";
+import { applyNERText, applyNERFile, getNERResults } from "../../services/api.js";
 
 const colors = [
   "#e6194b", // Rot
@@ -18,9 +18,13 @@ let input = document.getElementById("fileInput")
 let buttonExportsResults = document.getElementById("exportResults")
 let labelNERState = document.getElementById("nerState")
 let entityLegend = document.getElementById("entityLegend")
+let applyNERTextStatus = document.getElementById("applyNERTextStatus")
 
 let tokens = undefined
 let labels = undefined
+
+let timerApplyNER = undefined
+let intervallDuration = 1 * 1000;
 
 //check if text is in textarea
 textarea.addEventListener('input', () =>{
@@ -32,9 +36,17 @@ textarea.addEventListener('input', () =>{
 })
 
 buttonApplyNER.onclick = async () =>{
-    let res = await applyNERText(textarea.innerText)
-    visualizeEntities(res[0],res[1])
-    console.log(res)
+    if (!localStorage.getItem("job_id")){
+        let jobId = await applyNERText(textarea.innerText)
+        if (jobId == undefined){
+            applyNERTextStatus.textContent = "Fehler beim Starten von NER"
+        } else{
+            localStorage.setItem("job_id",jobId)
+            localStorage.setItem("labels",false)
+            startApplyNERInterval(false);
+        }
+    }
+
 }
 
 function visualizeEntities(tokens, labels){
@@ -92,9 +104,6 @@ function resetVisualizingEntities(){
     textarea.innerHTML = "";
 }
 
-/*
- * Muss dies noch abändern das es über einen Job läuft und nachgefragt wird, ob verfügbar
- */
 
 //listener if file is uploaded
 upload.addEventListener('submit', async(e) => {
@@ -110,18 +119,15 @@ upload.addEventListener('submit', async(e) => {
     formData.append("file", file);
 
     resetVisualizingEntities();
-    labelNERState.innerHTML = "NER wird angewandt";
-    labelNERState.style.color = "red"
-    let res = await applyNERFile(formData)
-    if (res){
-        labelNERState.innerHTML = `NER abgeschlossen - F1: ${res[2].f1.toFixed(2)}, Precision: ${res[2].precision.toFixed(2)}, Recall: ${res[2].recall.toFixed(2)}, Genauigkeit: ${res[2].accuracy.toFixed(2)}`;
-        labelNERState.style.color = "green"
-        tokens = res[0];
-        labels = res[1];
-        buttonExportsResults.disabled = false;
-    } else {
-        labelNERState.innerHTML = `Fehler beim Anwenden von NER`
-    }
+    
+    let jobId = await applyNERFile(formData)
+    if (jobId == undefined){
+            labelNERState.textContent = "Fehler beim Starten von NER"
+        } else{
+            localStorage.setItem("job_id",jobId)
+            localStorage.setItem("labels", true)
+            startApplyNERInterval(true);
+        }
 })
 
 function createExportFile(){
@@ -144,4 +150,72 @@ function createExportFile(){
     buttonExportsResults.disabled = true;
 }
 
+async function startApplyNERInterval(withLabels){
+    timerApplyNER = setInterval(async ()=> {
+                let reset = await checkNERResults(withLabels);
+                if (reset){
+                    console.log("Reset Timer")
+                    clearInterval(timerApplyNER);
+                    localStorage.removeItem("job_id")
+                }
+            }, intervallDuration)
+}
+async function checkNERResults(withLabels){ 
+    let jobId = localStorage.getItem("job_id")
+    let reset = false;
+    if (jobId){
+        let res = await getNERResults(jobId)
+        let state = res["state"]
+        if(withLabels){
+            reset = handleNERResultsFile(state,res)
+        } else {
+            reset = handleNERResultsText(state, res);
+        }
+    return reset;
+    } else {
+        console.error("No JobId")
+    }
+}
+
+function handleNERResultsFile(state, res){
+    let reset = true;
+    if(state){
+        let result = res["result"][2]
+        labelNERState.innerHTML = `NER abgeschlossen - F1: ${result["f1"]}, Precision: ${result["precision"]}, Recall: ${result["recall"]}, Genauigkeit: ${result["accuracy"]}`;
+        labelNERState.style.color = "green"
+        tokens = res["result"][0];
+        labels = res["result"][1];
+        buttonExportsResults.disabled = false;
+    } else if (state == false){
+        labelNERState.innerHTML = "NER wird durchgeführt"
+        labelNERState.style.color = "red"
+        reset = false;
+    } else{
+        labelNERState.innerHTML = "Fehlerhafte JobId"
+    }
+    return reset;
+}
+
+function handleNERResultsText(state, res){
+    let reset = true;
+    if (state == true){
+        let result = res["result"]
+        console.log("test")
+        visualizeEntities(result[0], result[1])
+        applyNERTextStatus.textContent = "";
+    } else if (state == false) {
+        applyNERTextStatus.textContent = "NER wird durchgeführt"
+        reset = false;
+    } else {
+        applyNERTextStatus.textContent = "Fehlerhafte JobId"
+    }
+    return reset;
+}
+
+async function checkIfNerIsRunning() {
+
+    
+}
+
 buttonExportsResults.onclick = createExportFile
+

@@ -30,7 +30,7 @@ class SpacyFramework(Framework):
     def default_finetuning_params(self):
         return {
             'max_epochs': 0,
-            'max_steps': 200,
+            'max_steps': 800,
             'eval_frequency': 20
         }
 
