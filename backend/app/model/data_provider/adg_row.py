@@ -3,6 +3,14 @@ from typing import List, Tuple
 import re
 
 @dataclass
+class ADGSentence:
+    text: str
+    tokens: list[str]
+    labels: list[str]
+    indexes: tuple[int,int]
+    row_index: int
+
+@dataclass
 class ADGRow:
     idx: int
     unextracted: str

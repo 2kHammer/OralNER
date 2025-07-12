@@ -5,11 +5,14 @@ import spacy
 import re
 import json
 
-from .adg_row import ADGRow, extract_ADG_row
+from flair.data import Sentence
+
+from .adg_row import ADGRow, extract_ADG_row, ADGSentence
 from app.utils.helpers import get_current_datetime
 from app.utils.json_manager import JsonManager
 from dataclasses import dataclass, asdict
 from app.utils.config import TRAININGSDATA_METADATA_PATH, TRAININGSDATA_CONVERTED_PATH, DEFAULT_TOKENIZER_PATH
+
 
 
 @dataclass
@@ -117,19 +120,20 @@ class DataRegistry:
         return self._datasets[index].name
     
     def split_training_data_sentences(self,rows):
-        sentences_tokens = []
-        sentences_labels = []
+        sentences_data = []
         for row in rows:
+            row_index = row.idx
             sentences_statement, sentences_indexes_statement = simple_split_sentences(row.text)
             full_tokens_sen = row.tokens
             full_labels_sen = row.labels
-            for sentence in sentences_statement:
+            for ind, sentence in enumerate(sentences_statement):
                 tokens_sen, index_sen = simple_tokenizer(sentence)
-                sentences_tokens.append(full_tokens_sen[:len(tokens_sen)])
+                sentence_tokens =full_tokens_sen[:len(tokens_sen)]
                 full_tokens_sen = full_tokens_sen[len(tokens_sen):]
-                sentences_labels.append(full_labels_sen[:len(tokens_sen)])
+                sentence_labels = full_labels_sen[:len(tokens_sen)]
                 full_labels_sen = full_labels_sen[len(tokens_sen):]
-        return sentences_tokens, sentences_labels
+                sentences_data.append(ADGSentence(sentence, sentence_tokens, sentence_labels, sentences_indexes_statement[ind], row_index))
+        return sentences_data
 
     def _read_convert_adg_file(self, file):
         reader = csv.reader(file, delimiter=';', quoting=csv.QUOTE_NONE)

@@ -2,7 +2,7 @@ import threading
 import uuid
 from threading import Thread
 
-from app.model.data_provider.data_registry import data_registry
+from app.model.data_provider.data_registry import data_registry, simple_split_sentences
 from app.model.framework_provider.flair_framework import FlairFramework
 from app.model.framework_provider.huggingface_framework import HuggingFaceFramework
 from app.model.framework_provider.spacy_framework import SpacyFramework
@@ -66,17 +66,25 @@ def finetune_ner(model_id, dataset_id, new_model_name):
 
     return modified_model_id
 
-def _ner_worker(job_id,framework, framework_name, content, with_file=False):
+def _ner_worker(job_id,framework, framework_name, content, with_file=False, use_sentences=False):
     sentences = None
     adg_rows = None
     if with_file:
         adg_rows = data_registry.prepare_data_with_labels(content)
-        sentences = [to.tokens for to in adg_rows]
+        sentence_labels = None
         # flair needs tokens
         if framework_name.name == 'FLAIR':
-            sentences = [row.tokens for row in adg_rows]
+            if use_sentences:
+                sentences, sentence_labels = data_registry.split_data_with_labels(adg_rows)
+            else:
+                sentences = [row.tokens for row in adg_rows]
         else:
-            sentences = [row.text for row in adg_rows]
+            if use_sentences:
+                for row in adg_rows:
+                    sentences_row, sentence_index_row = simple_split_sentences(row.text)
+                    sentences += sentences_row
+            else:
+                sentences = [row.text for row in adg_rows]
     else:
         sentences = data_registry.prepare_data_without_labels(content)
     entities = framework.apply_ner(sentences)

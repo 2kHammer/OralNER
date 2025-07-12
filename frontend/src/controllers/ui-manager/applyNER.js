@@ -154,7 +154,6 @@ async function startApplyNERInterval(withLabels){
     timerApplyNER = setInterval(async ()=> {
                 let reset = await checkNERResults(withLabels);
                 if (reset){
-                    console.log("Reset Timer")
                     clearInterval(timerApplyNER);
                     localStorage.removeItem("job_id")
                 }
@@ -178,6 +177,7 @@ async function checkNERResults(withLabels){
 }
 
 function handleNERResultsFile(state, res){
+    console.log("NER Result File")
     let reset = true;
     if(state){
         let result = res["result"][2]
@@ -200,7 +200,6 @@ function handleNERResultsText(state, res){
     let reset = true;
     if (state == true){
         let result = res["result"]
-        console.log("test")
         visualizeEntities(result[0], result[1])
         applyNERTextStatus.textContent = "";
     } else if (state == false) {
@@ -213,9 +212,18 @@ function handleNERResultsText(state, res){
 }
 
 async function checkIfNerIsRunning() {
-
+    let jobId = localStorage.getItem("job_id")
+    if (jobId){
+        let labels = localStorage.getItem("labels")
+        if (labels == "false"){
+            startApplyNERInterval(false)
+        } else {
+            startApplyNERInterval(true)
+        }
+    }
     
 }
 
 buttonExportsResults.onclick = createExportFile
+checkIfNerIsRunning();
 

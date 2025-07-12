@@ -2,7 +2,7 @@ from itertools import chain
 
 from app.model.data_provider.data_registry import data_registry
 from app.model.framework_provider.flair_framework import FlairFramework
-from app.model.framework_provider.framework import FrameworkNames
+from app.model.framework_provider.framework import FrameworkNames, Framework
 from app.model.ner_model_provider.model_registry import model_registry
 from app.utils.config import MODIFIED_MODELS_PATH
 
@@ -46,27 +46,18 @@ def test_convert_ner_results_not_adg(model_id=3, training_data_id=1, size_test=1
             if label != "O":
                 assert index_label in indexes_labels
 
-def test_ner_adg_no_sentence_split(model_id=3,training_data_id=3):
-    adg_rows = data_registry.load_training_data(training_data_id)
-    sentences_token = [to.tokens for to in adg_rows]
+def test_ner_pipeline_adg(model_id=3,training_data_id=3, size_test=100):
+    adg_rows = data_registry.load_training_data(training_data_id)[25:25+size_test]
     ff = FlairFramework()
-    ff.load_model(model_registry.list_model(model_id))
-    entities = ff.apply_ner(sentences_token)
-    tokens, labels, metrics =ff.convert_ner_results(entities, adg_rows)
+    model_to_apply = model_registry.list_model(model_id)
+    tokens, labels, metrics = ff.process_ner_pipeline(model_to_apply,adg_rows)
     expected_metrics = {'f1', 'recall', 'precision', 'accuracy'}
     assert expected_metrics.issubset(metrics.keys())
 
-# split into sentences doesn't work now
-def test_apply_ner_with_labels_sentence_split(model_id=3, training_data_id=2, size_test=100):
-    ff = FlairFramework()
-    ff.load_model(model_registry.list_model(model_id))
-    rows = data_registry.load_training_data(training_data_id)
-    sentence_tokens, sentence_labels =data_registry.split_training_data_sentences(rows)
-    ner_results, tokens =ff.apply_ner(sentence_tokens)
-    assert sentence_tokens == tokens
-    tokens, predicted_labels, metrics = ff.convert_ner_results((ner_results,tokens),rows)
-    expected_metrics = {'f1','recall','precision','accuracy'}
-    assert expected_metrics.issubset(metrics.keys())
+    #test sentence split
+    tokens_sen, labels_sen, metrics_sen = ff.process_ner_pipeline(model_to_apply,adg_rows, True)
+    assert expected_metrics.issubset(metrics_sen.keys())
+
 
 def test_prepare_training_data(model_id=3,training_data_id=2,size_test=100):
     ff = FlairFramework()
@@ -107,8 +98,9 @@ def test_finetune_model(model_id=3,training_data_id=1):
     ff.finetune_ner_model(base_model.storage_path, corpus, label_dict,modified_name,MODIFIED_MODELS_PATH, params=test_params)
 
 def test_train_test_split(train_size=0.8, valid_size=0.1,test_size=0.1):
+    ff = FlairFramework()
     test_data = [1]*int(100*train_size) + [2]*int(100*(valid_size+test_size))
-    train, valid, test = train_test_split(test_data,train_size=train_size,valid_size=valid_size,test_size=test_size)
+    train, valid, test = ff._train_test_split(test_data,train_size=train_size,valid_size=valid_size,test_size=test_size)
     assert len(train) + len(valid) + len(test) == len(test_data)
     assert len(train) == (100 * train_size)
     # test shuffle

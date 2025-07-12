@@ -67,7 +67,9 @@ class HuggingFaceFramework(Framework):
         data = None
         # change statements to sentences and create the dataset
         if split_sentences:
-            sentences_tokens, sentences_labels = data_registry.split_training_data_sentences(rows)
+            sentence_data =data_registry.split_training_data_sentences(rows)
+            sentences_tokens = [sen.tokens for sen in sentence_data]
+            sentences_labels = [sen.labels for sen in sentence_data]
             data = Dataset.from_list(
                 [{"tokens": sen_tokens, "labels": [label_id[label] for label in sentences_labels[i+1]]} for i, sen_tokens in enumerate(sentences_tokens[1:])])
         else:

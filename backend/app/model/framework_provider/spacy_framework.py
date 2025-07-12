@@ -11,6 +11,7 @@ from spacy.cli.train import train
 from typing_extensions import override
 
 from app.model.data_provider.adg_row import ADGRow
+from app.model.data_provider.data_registry import simple_split_sentences, data_registry
 from app.model.framework_provider.framework import Framework, FrameworkNames
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.config import SPACY_TRAININGSDATA_PATH
@@ -41,12 +42,35 @@ class SpacyFramework(Framework):
             raise TypeError("Expects an model for Spacy")
         correct_model_path = self._get_correct_model_path(model.storage_path)
         self.ner_model = spacy.load(correct_model_path)
+    
+    def process_ner_pipeline(self, model,ner_content, use_sentences = False):
+        if not isinstance(ner_content, list):
+            if not isinstance(ner_content[0], str) or not isinstance(ner_content[0], ADGRow):
+                raise TypeError("Excepts a list of strings or ADGRows")
+        if not isinstance(model, NERModel):
+            raise TypeError("Expects an object of type NERModel")
+        if model.framework_name != FrameworkNames.SPACY:
+            raise ValueError("Expects an model for Spacy")
+
+        self.load_model(model)
+        adg_sentences = None
+        results = None
+        if isinstance(ner_content[0], ADGRow):
+            if use_sentences:
+                adg_sentences = data_registry.split_training_data_sentences(ner_content)
+                sen = [sen.text for sen in adg_sentences]
+                results = self.apply_ner(sen)
+            else:
+                results = self.apply_ner([row.text for row in ner_content])
+        else:
+            results = self.apply_ner(ner_content)
+        tokens, predicted_labels, metrics =self.convert_ner_results(results,ner_content,adg_sentences)
+        return tokens, predicted_labels, metrics
+
+
+
 
     def apply_ner(self, texts):
-        if not isinstance(texts, list):
-            if not isinstance(texts[0], str):
-                raise TypeError("Expects a list of strings")
-
         results = []
         tokens = []
         for doc in self.ner_model.pipe(texts):
@@ -142,21 +166,31 @@ class SpacyFramework(Framework):
             examples_with_ref.append(Example(pred, example.reference))
         return scorer.score(examples_with_ref)
 
-    def convert_ner_results(self, ner_results, ner_input):
+    def convert_ner_results(self, ner_results, ner_input, sentences = None):
         if isinstance(ner_input[0], ADGRow):
-            return self._convert_ner_results_adg(ner_results, ner_input)
+            return self._convert_ner_results_adg(ner_results, ner_input, sentences)
         else:
             tokens, predicted_labels = self._convert_ner_results_to_format(ner_results)
             return tokens, predicted_labels, None
 
-    def _convert_ner_results_adg(self, ner_results,ner_input):
+    def _convert_ner_results_adg(self, ner_results,ner_input, sentences):
         results, tokens = ner_results
-        for index, result in enumerate(results):
-            # check if the adg-tokens and the model tokens are the same -> if not error
-            if tokens[index] != ner_input[index].tokens:
-                return ValueError("ADG-default tokens and model tokens are not identical")
+        annoted_labels = None
+        if sentences:
+            # check if the tokens of this spacy model are the same as the default ones
+            for index, tokens_sen in enumerate(tokens):
+               if tokens_sen != sentences[index].tokens:
+                   return ValueError("ADG-default tokens and model tokens are not identical")
+            annoted_labels = [sen.labels for sen in sentences]
+        else:
+            # check if the tokens of this spacy model are the same as the default ones
+            for index, tokens_sen in enumerate(tokens):
+                # check if the adg-tokens and the model tokens are the same -> if not error
+                if tokens_sen != ner_input[index].tokens:
+                    return ValueError("ADG-default tokens and model tokens are not identical")
+            annoted_labels= [row.labels for row in ner_input]
+
         _, predicted_labels = self._convert_ner_results_to_format(ner_results)
-        annoted_labels = [row.labels for row in ner_input]
         metrics = self._calc_metrics(annoted_labels, predicted_labels)
         return tokens, predicted_labels, metrics
 

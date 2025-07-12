@@ -56,16 +56,19 @@ def test_check_if_the_model_tokens_are_the_same_for_all_datasets():
     for i in range(0,4):
         test_load_apply_ner_bert_german_model(model_id=8, dataset_id=i)
 
-def test_convert_ner_results_with_adg(model_id=8, dataset_id=2):
+def test_ner_pipeline_adg(model_id=8, dataset_id=2, test_size=100):
     model_id = create_get_ner_bert_german(model_id)
     sf = spacy_framework.SpacyFramework()
-    sf.load_model(model_registry.list_model(model_id))
-    rows =data_registry.load_training_data(dataset_id)
-    texts = [row.text for row in rows]
-    ner_results = sf.apply_ner(texts)
-    tokens, pred_labels, metrics=sf.convert_ner_results(ner_results, rows)
+    model =model_registry.list_model(model_id)
+    rows =data_registry.load_training_data(dataset_id)[30:30+test_size]
+    # without sentence split
+    tokens, pred_labels, metrics=sf.process_ner_pipeline(model,rows)
     expected_metrics = {'f1', 'recall', 'precision', 'accuracy'}
     assert expected_metrics.issubset(metrics.keys())
+    # with sentence split
+    tokens_sen, pred_labels_sen, metrics_sen=sf.process_ner_pipeline(model,rows, True)
+    expected_metrics = {'f1', 'recall', 'precision', 'accuracy'}
+    assert expected_metrics.issubset(metrics_sen.keys())
 
 def test_finetune(base_model_id=8):
     base_model = model_registry.list_model(base_model_id)

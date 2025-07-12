@@ -39,6 +39,35 @@ class FlairFramework(Framework):
         file_path = self._get_pt_file(model.storage_path)
         self.model = SequenceTagger.load(file_path)
 
+    def process_ner_pipeline(self, model, ner_content, use_sentences = False):
+        if not isinstance(ner_content, list):
+            if not isinstance(ner_content[0], str) or not isinstance(ner_content[0], ADGRow):
+                raise TypeError("Excepts a list of strings or ADGRows")
+        if not isinstance(model, NERModel):
+            raise TypeError("Expects an object of type NERModel")
+        if model.framework_name != FrameworkNames.FLAIR:
+            raise ValueError("Expects an model for Flair")
+
+
+        self.load_model(model)
+        results = None
+        adg_sentences = None
+        if isinstance(ner_content[0], ADGRow):
+            if use_sentences:
+                adg_sentences = data_registry.split_training_data_sentences(ner_content)
+                tokens = [sent.tokens for sent in adg_sentences]
+                sentence_labels = [sent.labels for sent in adg_sentences]
+                results = self.apply_ner(tokens)
+            else:
+                results = self.apply_ner([row.tokens for row in ner_content])
+        else:
+           results = self.apply_ner(ner_content)
+
+        tokens, predicted_labels, metrics = self.convert_ner_results(results,ner_content,adg_sentences)
+        return tokens, predicted_labels, metrics
+
+
+
     #input has to be in sentences - check this
     # abstract type checks
     def apply_ner(self, texts):
@@ -51,10 +80,6 @@ class FlairFramework(Framework):
         Returns:
             List, List: first List contains dicts with the entities: "text","type","start_token","end_token","start_pos", second List contains Tokens
         """
-        if not isinstance(texts, list):
-            if not isinstance(texts[0], str) or not isinstance(texts[0], list):
-                raise TypeError("Expects a list of strings or list of token-lists")
-
         # check if it should be applied on tokens
         apply_on_labeled_data = False
         if isinstance(texts[0], list):
@@ -91,7 +116,9 @@ class FlairFramework(Framework):
         labels = None
         if split_sentences:
             #statements shouldn't be split across datasets
-            tokens, labels = data_registry.split_training_data_sentences(rows)
+            sentence_data = data_registry.split_training_data_sentences(rows)
+            tokens = [sent.tokens for sent in sentence_data]
+            labels = [sent.labels for sent in sentence_data]
         else:
             tokens = [row.tokens for row in rows]
             labels  = [row.labels for row in rows]
@@ -145,18 +172,17 @@ class FlairFramework(Framework):
         return train_res, params
 
     # abstract eventually
-    def convert_ner_results(self, ner_results, ner_input):
+    def convert_ner_results(self, ner_results, ner_input, sentences = None):
         if isinstance(ner_input[0], ADGRow):
             annoted_labels = [row.labels for row in ner_input]
+            if sentences:
+                annoted_labels = [sen.labels for sen in sentences]
             tokens, predicted_labels =  self._convert_ner_results_to_format(ner_results)
             metrics = self._calc_metrics(annoted_labels, predicted_labels)
             return tokens, predicted_labels, metrics
         else:
             tokens, predicted_labels = self._convert_ner_results_to_format(ner_results)
             return tokens, predicted_labels, None
-
-    #def _convert_ner_results_to_format(self, ner_results, ner_input):
-
 
     def _create_conll_files(self, train, valid, test):
         tokens_train = [t["tokens"] for t in train]
