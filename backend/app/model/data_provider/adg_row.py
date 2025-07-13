@@ -9,6 +9,7 @@ class ADGSentence:
     labels: list[str]
     indexes: tuple[int,int]
     row_index: int
+    token_indexes: list[int]
 
 @dataclass
 class ADGRow:

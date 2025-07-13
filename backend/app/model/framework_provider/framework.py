@@ -29,6 +29,10 @@ class Framework(ABC):
         """
         pass
 
+    @abstractmethod
+    def process_ner_pipeline(self,model, ner_content, use_sentences = False):
+        pass
+
     # think about if the texts should be automatically be splitted into sentences
     @abstractmethod
     def apply_ner(self, texts):
@@ -43,8 +47,9 @@ class Framework(ABC):
         """
         pass
 
+    # only flair would use 3 datasets -> use there only two
     @abstractmethod
-    def prepare_training_data(self,rows, tokenizer_path=None, train_size=0.8, validation_size=0.1, test_size=0.1, split_sentences=False):
+    def prepare_training_data(self,rows, tokenizer_path=None, train_size=0.8, validation_size=0.2, split_sentences=False, seed=None):
         """
         Convert the rows to the framework specific finetuning/training format
 
@@ -80,7 +85,7 @@ class Framework(ABC):
         pass
 
     @abstractmethod
-    def convert_ner_results(self,ner_results, ner_input):
+    def convert_ner_results(self,ner_results, ner_input, sentences = None):
         """
         Converts the framework-specific `ner-results` to BIO-format. If the input data is in the format List[ADGRow], you receive metrics.
 
@@ -117,9 +122,12 @@ class Framework(ABC):
             labels.append(label_sentence)
         return tokens, labels
 
-    def _train_test_split(self,data, train_size=0.8, valid_size=0.1, test_size=0.1, seed=True):
+    # data should be the rows, then the statements are not parted
+    # danger of data leakage: some sentences of statement in train, some in test
+    # lerns the entities of the senteces in the train, test sentence use the same entities -> test is too good
+    def _train_test_split(self,data, train_size=0.8, valid_size=0.2, test_size=0, seed=None):
         if seed:
-            random.seed(42)
+            random.seed(seed)
         shuffled = data.copy()
         random.shuffle(shuffled)
         n = len(shuffled)

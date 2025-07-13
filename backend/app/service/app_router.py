@@ -57,8 +57,10 @@ def apply_ner():
             return jsonify({"job_id":job_id}), 200
         elif "file" in request.files:
             file = request.files["file"]
+            split_sentences_str = request.form.get("split_sentences")
+            split_sentences = (split_sentences_str == "true")
             decoded_file = file.read().decode("utf-8").splitlines()
-            job_id = ner_manager.start_ner(decoded_file, True)
+            job_id = ner_manager.start_ner(decoded_file, True, split_sentences)
             return jsonify({"job_id":job_id}), 200
         return jsonify({'error': 'No valid text or file provided'}), 400
     except Exception as e:
@@ -90,9 +92,10 @@ def finetune():
             dataset_id = data.get("dataset_id")
             parameters = data.get("parameters")
             name = parameters.get("new_model_name")
+            split_sentences = parameters.get("split_sentences")
             if model_id is None or dataset_id is None or name is None:
                 return jsonify({'error': 'No valid model_id or dataset_id or parameters provided'}), 400
-            model_id = ner_manager.finetune_ner(model_id, dataset_id, name)
+            model_id = ner_manager.finetune_ner(model_id, dataset_id, name, split_sentences)
             return jsonify({"modified_model_id": model_id}), 202
 
     except Exception as e:

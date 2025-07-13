@@ -42,11 +42,32 @@ class HuggingFaceFramework(Framework):
         self.model = AutoModelForTokenClassification.from_pretrained(model.storage_path)
         self.tokenizer = AutoTokenizer.from_pretrained(model.storage_path)
 
-    def apply_ner(self, texts):
-        if not isinstance(texts, list):
-            if not isinstance(texts[0], str):
-                raise TypeError("Expects a list of strings")
+    def process_ner_pipeline(self, model, ner_content, use_sentences=False):
+        if not isinstance(ner_content, list):
+            if not isinstance(ner_content[0], str) or not isinstance(ner_content[0], ADGRow):
+                raise TypeError("Excepts a list of strings or ADGRows")
+        if not isinstance(model, NERModel):
+            raise TypeError("Expects an object of type NERModel")
+        if model.framework_name != FrameworkNames.HUGGINGFACE:
+            raise ValueError("Expects an model for HuggingFace")
 
+        self.load_model(model)
+        results = None
+        adg_sentences = None
+        if isinstance(ner_content[0], ADGRow):
+            if use_sentences:
+                adg_sentences = data_registry.split_training_data_sentences(ner_content)
+                texts = [sent.text for sent in adg_sentences]
+                results = self.apply_ner(texts)
+            else:
+                results = self.apply_ner([row.text for row in ner_content])
+        else:
+            results = self.apply_ner(ner_content)
+
+        tokens, predicted_labels, metrics = self.convert_ner_results(results, ner_content, adg_sentences)
+        return tokens, predicted_labels, metrics
+
+    def apply_ner(self, texts):
         ner_results = []
         for text in texts:
             # maybe change the aggregation strategy
@@ -55,7 +76,8 @@ class HuggingFaceFramework(Framework):
             ner_results.append(nlp(text))
         return ner_results
 
-    def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.1, test_size=0.1, split_sentences=False):
+    def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.2,
+                              split_sentences=False, seed=None):
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
 
@@ -64,31 +86,30 @@ class HuggingFaceFramework(Framework):
         all_labels = list(set(label for row in rows for label in row.labels))
         label_id = {label: i for i, label in enumerate(all_labels)}
 
-        data = None
+        #split data
+        train, valid, _ = self._train_test_split(rows, train_size, validation_size, seed=seed)
+
+        train_datas = None
+        valid_data = None
         # change statements to sentences and create the dataset
         if split_sentences:
-            sentence_data =data_registry.split_training_data_sentences(rows)
-            sentences_tokens = [sen.tokens for sen in sentence_data]
-            sentences_labels = [sen.labels for sen in sentence_data]
-            data = Dataset.from_list(
-                [{"tokens": sen_tokens, "labels": [label_id[label] for label in sentences_labels[i+1]]} for i, sen_tokens in enumerate(sentences_tokens[1:])])
+            sentence_data_train =data_registry.split_training_data_sentences(train)
+            sentence_data_valid =data_registry.split_training_data_sentences(valid)
+            train_data = Dataset.from_list(
+                [{"tokens": sen.tokens, "labels": [label_id[label] for label in sen.labels]} for i, sen in enumerate(sentence_data_train)])
+            valid_data = Dataset.from_list(
+                [{"tokens": sen.tokens, "labels": [label_id[label] for label in sen.labels]} for i, sen in
+                 enumerate(sentence_data_valid)])
         else:
             # create dataset from traingsdata
-            data = Dataset.from_list([{"tokens": row.tokens, "labels": [label_id[label] for label in row.labels]} for row in rows[1:]])
+            train_data = Dataset.from_list([{"tokens": row.tokens, "labels": [label_id[label] for label in row.labels]} for row in train])
+            valid_data = Dataset.from_list([{"tokens": row.tokens, "labels": [label_id[label] for label in row.labels]} for row in valid])
 
         # tokenize training data with word ids
-        tokenized_data = data.map(lambda x: self._tokenize_and_align_labels(x,tokenizer_path), batched=True)
+        tokenized_data_train = train_data.map(lambda x: self._tokenize_and_align_labels(x,tokenizer_path), batched=True)
+        tokenized_data_valid = valid_data.map(lambda x: self._tokenize_and_align_labels(x,tokenizer_path), batched=True)
 
-        # is validation needed?
-        split_test = tokenized_data.train_test_split(test_size=test_size, seed=42)
-        test_data = split_test["test"]
-        train_data = split_test["train"]
-
-        split_validation = train_data.train_test_split(test_size=validation_size/(1-test_size), seed=42)
-        validation_data = split_validation["test"]
-        train_data = split_validation["train"]
-
-        dataset_dict = DatasetDict({"train":train_data, "validation":validation_data, "test":test_data})
+        dataset_dict = DatasetDict({"train":tokenized_data_train, "validation":tokenized_data_valid})
         return dataset_dict, label_id
 
 
@@ -127,7 +148,7 @@ class HuggingFaceFramework(Framework):
             model=model,
             args=training_args,
             train_dataset=data_dict["train"],
-            eval_dataset=data_dict["test"],
+            eval_dataset=data_dict["validation"],
             processing_class=tokenizer,
             data_collator=data_collator,
             compute_metrics=lambda p: self._compute_metrics(p, list_labels),
@@ -145,41 +166,51 @@ class HuggingFaceFramework(Framework):
 
     # split function
     # add a less strict type comparison, without B- and I-
-    def convert_ner_results(self,ner_results, ner_input):
+    def convert_ner_results(self,ner_results, ner_input, sentences = None):
         if isinstance(ner_input[0], ADGRow):
-            return self._convert_ner_results_adg(ner_results, ner_input)
+            return self._convert_ner_results_adg(ner_results, ner_input, sentences)
         else:
             tokens, predicted_labels = self._convert_ner_results_not_adg(ner_results, ner_input)
             return tokens, predicted_labels, None
 
-    def _convert_ner_results_adg(self, ner_results, ner_input):
+    def _convert_ner_results_adg(self, ner_results, ner_input, sentences):
         metrics = None
         tokens = []
         predicted_labels = []
         annoted_labels = []
         for index, result in enumerate(ner_results):
-            adg_row = ner_input[index]
-            labels_row = ["O"] * len(adg_row.labels)
+            #Distinguish if ner was applied on sentences
+            # tokens and labels are accessed in the same way
+            statement = None
+            indexes = None
+            if sentences is not None:
+                statement = sentences[index]
+                indexes = statement.token_indexes
+            else:
+                statement = ner_input[index]
+                indexes = statement.indexes
+
+            labels_row = ["O"] * len(statement.labels)
             # map the entities to labels_row
             for entity in result:
                 if entity["word"][:2] != '##':  #
                     try:
                         index_label = -1
-                        # search the index of the corresponding token in adgrow
-                        if entity["start"] in adg_row.indexes:
-                            index_label = adg_row.indexes.index(entity["start"])
+                        # search the index of the corresponding token in statement
+                        if entity["start"] in indexes:
+                            index_label = indexes.index(entity["start"])
                         else:
                             # if only a part of the word is recognized as entity -> apply to full word
-                            for index, index_val in enumerate(adg_row.indexes):
+                            for index_indexes, index_val in enumerate(indexes):
                                 if index_val > entity["start"]:
-                                    index_label = index - 1
+                                    index_label = index_indexes - 1
                                     break
                         labels_row[index_label] = entity["entity"]
                     except ValueError:
                         print("Error by assigning the predicted labels")
             predicted_labels.append(labels_row)
-            tokens.append(adg_row.tokens)
-            annoted_labels.append(adg_row.labels)
+            tokens.append(statement.tokens)
+            annoted_labels.append(statement.labels)
 
         # calc metrics
         metrics = self._calc_metrics(annoted_labels,predicted_labels)
@@ -190,7 +221,7 @@ class HuggingFaceFramework(Framework):
         predicted_labels = []
         for index_sentence, sentence in enumerate(ner_input):
 
-            # prepare tokens for return
+            # prepare tokens for return, tokens are different from the adg-tokens -> other modell
             tokens_hf = self.tokenizer(sentence, return_offsets_mapping=True)
             sub_tokens = tokens_hf.tokens()[1:-1]
             sub_startindexes = [index[0] for index in tokens_hf["offset_mapping"]][1:-1]

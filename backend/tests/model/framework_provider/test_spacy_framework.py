@@ -1,16 +1,30 @@
+import spacy
+
 from app.model.data_provider.data_registry import data_registry
 from app.model.framework_provider import spacy_framework
 from app.model.framework_provider.framework import FrameworkNames
 from app.model.framework_provider.spacy_framework import SpacyFramework
 from app.model.ner_model_provider.model_registry import model_registry
 from app.model.ner_model_provider.ner_model import NERModel
-from app.utils.config import BASE_MODELS_PATH
+from app.utils.config import BASE_MODELS_PATH, SPACY_TRAININGSDATA_PATH
 
 
-def test_prepare_training_data(training_data_id=3):
+def test_prepare_training_data(training_data_id=2, model_id = 8):
     rows = data_registry.load_training_data(training_data_id)
     sf = SpacyFramework()
-    sf.prepare_training_data(rows, tokenizer_path=None, train_size=0.7, validation_size=0.3, test_size=0, split_sentences=False)
+    sf.prepare_training_data(rows, tokenizer_path=None, train_size=0.7, validation_size=0.3, split_sentences=True, seed=42)
+    base_model = model_registry.list_model(8)
+    nlp = spacy.load(sf._get_correct_model_path(base_model.storage_path))
+    train_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy",nlp)
+    valid_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy",nlp)
+    train_texts = [example.reference.text for example in train_examples]
+    valid_texts = [example.reference.text for example in valid_examples]
+
+    sentences = data_registry.split_training_data_sentences(rows)
+    sentences_text = [sen.text for sen in sentences]
+    #check if the length is the same
+    assert len(sentences_text) == (len(train_texts) + len(valid_texts))
+
 
 def create_get_dummy_model(model_id):
     dummy = model_registry.list_model(model_id)

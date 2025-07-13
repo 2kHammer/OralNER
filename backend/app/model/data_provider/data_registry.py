@@ -126,13 +126,21 @@ class DataRegistry:
             sentences_statement, sentences_indexes_statement = simple_split_sentences(row.text)
             full_tokens_sen = row.tokens
             full_labels_sen = row.labels
+            full_indexes_sen = row.indexes
             for ind, sentence in enumerate(sentences_statement):
                 tokens_sen, index_sen = simple_tokenizer(sentence)
+                #tokens
                 sentence_tokens =full_tokens_sen[:len(tokens_sen)]
                 full_tokens_sen = full_tokens_sen[len(tokens_sen):]
+                #labels
                 sentence_labels = full_labels_sen[:len(tokens_sen)]
                 full_labels_sen = full_labels_sen[len(tokens_sen):]
-                sentences_data.append(ADGSentence(sentence, sentence_tokens, sentence_labels, sentences_indexes_statement[ind], row_index))
+                #indexes
+                sentence_token_indexes = full_indexes_sen[:len(tokens_sen)]
+                full_indexes_sen = full_indexes_sen[len(tokens_sen):]
+                startind = sentence_token_indexes[0]
+                adapted_token_indexes = [ind - startind for ind in sentence_token_indexes]
+                sentences_data.append(ADGSentence(sentence, sentence_tokens, sentence_labels, sentences_indexes_statement[ind], row_index, adapted_token_indexes))
         return sentences_data
 
     def _read_convert_adg_file(self, file):

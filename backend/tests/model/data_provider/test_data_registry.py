@@ -14,7 +14,16 @@ def check_split_sentences(dataset_id=3):
     # check if the amount of tokens is the same
     assert sum_tokens == sum_tokens_sentences
 
+    for sen in sentence_data:
+        # check if the amount of indexes is the same as the amount of tokens
+        assert len(sen.token_indexes) == len(sen.tokens)
+        for ind, token in enumerate(sen.tokens):
+            len_token = len(token)
+            startindex_token = sen.token_indexes[ind]
+            # check if index corresponds to the token
+            assert sen.text[startindex_token:startindex_token+len_token] == token
+
 
 def test_split_sentences():
-    for i in range(3,4):
+    for i in range(0,4):
         check_split_sentences(i)

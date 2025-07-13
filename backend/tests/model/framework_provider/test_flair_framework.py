@@ -59,7 +59,7 @@ def test_ner_pipeline_adg(model_id=3,training_data_id=3, size_test=100):
     assert expected_metrics.issubset(metrics_sen.keys())
 
 
-def test_prepare_training_data(model_id=3,training_data_id=2,size_test=100):
+def test_prepare_training_data(model_id=3,training_data_id=1,size_test=200):
     ff = FlairFramework()
     ff.load_model(model_registry.list_model(model_id))
     rows = data_registry.load_training_data(training_data_id)[100:100+size_test]
@@ -69,9 +69,9 @@ def test_prepare_training_data(model_id=3,training_data_id=2,size_test=100):
     for sen in corpus.train:
         if len(sen.annotation_layers) == 1:
             amount_corpus_labels += len(sen.annotation_layers["ner"])
-    for sen in corpus.test:
-        if len(sen.annotation_layers) == 1:
-            amount_corpus_labels += len(sen.annotation_layers["ner"])
+    #for sen in corpus.test:
+    #    if len(sen.annotation_layers) == 1:
+    #        amount_corpus_labels += len(sen.annotation_layers["ner"])
     for sen in corpus.dev:
         if len(sen.annotation_layers) == 1:
             amount_corpus_labels += len(sen.annotation_layers["ner"])

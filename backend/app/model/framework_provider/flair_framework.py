@@ -56,7 +56,6 @@ class FlairFramework(Framework):
             if use_sentences:
                 adg_sentences = data_registry.split_training_data_sentences(ner_content)
                 tokens = [sent.tokens for sent in adg_sentences]
-                sentence_labels = [sent.labels for sent in adg_sentences]
                 results = self.apply_ner(tokens)
             else:
                 results = self.apply_ner([row.tokens for row in ner_content])
@@ -105,37 +104,28 @@ class FlairFramework(Framework):
 
     # can the data be loaded to keep the context of the sentences
     # the sentences contain a next and previous sentences object?
-    def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.1, test_size=0.1,
-                              split_sentences=False):
+    def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.2,
+                              split_sentences=False, seed=None):
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
 
         #make corpus of sentences,
         # Problem: sentences from statements are parted in the three datasets
-        tokens = None
-        labels = None
+        train, valid, _ = self._train_test_split(rows, train_size, validation_size, seed=seed)
+        train_modified = None
+        valid_modified = None
         if split_sentences:
             #statements shouldn't be split across datasets
-            sentence_data = data_registry.split_training_data_sentences(rows)
-            tokens = [sent.tokens for sent in sentence_data]
-            labels = [sent.labels for sent in sentence_data]
+            sentence_data_train = data_registry.split_training_data_sentences(train)
+            sentence_data_valid = data_registry.split_training_data_sentences(valid)
+            train_modified = [{"tokens":sen.tokens, "labels":sen.labels} for sen in sentence_data_train]
+            valid_modified = [{"tokens":sen.tokens, "labels":sen.labels} for sen in sentence_data_valid]
         else:
-            tokens = [row.tokens for row in rows]
-            labels  = [row.labels for row in rows]
+            train_modified = [{"tokens":row.tokens, "labels":row.labels} for row in train]
+            valid_modified = [{"tokens":row.tokens, "labels":row.labels} for row in valid]
 
-        '''
-        sentences = []
-        for index, token_sen in enumerate(tokens):
-            sen = Sentence(token_sen, use_tokenizer=False)
-            for label_index,label in enumerate(labels[index]):
-                if label != "O":
-                    sen.tokens[label_index].add_label("ner",label)
-            sentences.append(sen)
-        train, valid, test = train_test_split(sentences, train_size,validation_size, test_size)
-        '''
-        tokens_with_labels = [{"tokens":token, "labels":labels[index]}for index,token in enumerate(tokens)]
-        train, valid, test = self._train_test_split(tokens_with_labels, train_size,validation_size, test_size)
-        self._create_conll_files(train, valid, test)
+        self._create_conll_files(train_modified, valid_modified)
+        # text.txt is empty -> errors of no file is specified
         corpus = ColumnCorpus(CONLL_PATH,{0:'text',1:'ner'},train_file="train.txt",dev_file="valid.txt",test_file="test.txt")
         return corpus, corpus.make_label_dictionary(label_type="ner")
 
@@ -166,7 +156,7 @@ class FlairFramework(Framework):
             max_epochs=params["max_epochs"],
         )
         end = time.time()
-        result =trainer.model.evaluate(data_dict.test, gold_label_type="ner")
+        result =trainer.model.evaluate(data_dict.dev, gold_label_type="ner")
         class_report_micro = result.classification_report["micro avg"]
         train_res = TrainingResults(class_report_micro["f1-score"],class_report_micro["precision"],class_report_micro["recall"],end-start,result.scores["accuracy"])
         return train_res, params
@@ -184,16 +174,17 @@ class FlairFramework(Framework):
             tokens, predicted_labels = self._convert_ner_results_to_format(ner_results)
             return tokens, predicted_labels, None
 
-    def _create_conll_files(self, train, valid, test):
+    def _create_conll_files(self, train, valid, test=None):
         tokens_train = [t["tokens"] for t in train]
         labels_train = [t["labels"] for t in train]
         save_to_conll(tokens_train, labels_train, CONLL_PATH+"/train.txt")
         tokens_valid = [t["tokens"] for t in valid]
         labels_valid = [t["labels"] for t in valid]
         save_to_conll(tokens_valid, labels_valid, CONLL_PATH+"/valid.txt")
-        tokens_test = [t["tokens"] for t in test]
-        labels_test = [t["labels"] for t in test]
-        save_to_conll(tokens_test, labels_test, CONLL_PATH+"/test.txt")
+        if test:
+            tokens_test = [t["tokens"] for t in test]
+            labels_test = [t["labels"] for t in test]
+            save_to_conll(tokens_test, labels_test, CONLL_PATH+"/test.txt")
 
     def _get_pt_file(self,path):
         for file in os.listdir(path):

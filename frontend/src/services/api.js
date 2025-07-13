@@ -47,8 +47,8 @@ export async function applyNERText(text){
     }
 }
 
-export async function applyNERFile(file){
-    const res = await fetch(`${API_BASE_URL}/ner`,{method:'POST',body:file}) 
+export async function applyNERFile(formData){
+    const res = await fetch(`${API_BASE_URL}/ner`,{method:'POST',body:formData}) 
     if (res.status == 200){
         let responseData = await res.json()
         return responseData.job_id
@@ -62,6 +62,7 @@ export async function getNERResults(job_id){
     if (res.status == 200 || res.status  == 202){
         let responseData = await res.json();
         if (responseData["status"] == "done"){
+            console.log(responseData)
             return {"state":true, "result":responseData["result"]}
         } else if (responseData["status"] == "processing"){
             return {"state":false}
@@ -81,12 +82,13 @@ export async function getTrainingsData(){
     }
 }
 
-export async function startFinetune(modelId, datasetId, name){
+export async function startFinetune(modelId, datasetId, name, splitSentences){
     let body =  JSON.stringify({
         "model_id":modelId,
         "dataset_id":datasetId,
         "parameters":{
-            "new_model_name":name
+            "new_model_name":name,
+            "split_sentences":splitSentences
         }
     })
     const res = await fetch(`${API_BASE_URL}/ner/finetune`, {method:'POST',headers: { "Content-Type": "application/json" }, body:body})

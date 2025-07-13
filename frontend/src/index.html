@@ -18,8 +18,9 @@
               Transkribiertes Interview einfügen oder hochladen
               <form id="uploadForm">
                 <input type="file" id="fileInput" name="file" />
+                <input type="checkbox" id="splitSentencesCheckbox">Trennung in Sätze</input>
                 <button>Hochladen & Anwenden</button>
-              <button id="exportResults" disabled>Export Ergebnisse</button>
+                <button id="exportResults" disabled>Export Ergebnisse</button>
               </form>
               <div id="nerState"></div>
             </div>
@@ -67,8 +68,13 @@
               <div id="datasetSelectionContainer" style="height: 35%; overflow-y: auto; border: 1px solid #ccc;">
               </div>
               <h3>Weitere Parameter auswählen</h3>
-              <label for="modelNameInput">Name des anzupassenden Modells:</label>
-              <input type="text" id="modelNameInput" name="name" placeholder="Angepasster Name"></input>
+              <div>
+                <label for="modelNameInput">Name des anzupassenden Modells:</label>
+                <input type="text" id="modelNameInput" name="name" placeholder="Angepasster Name"></input>
+              </div>
+              <div>
+                <input type="checkbox" id="splitSentencesFinetuningCheckbox">Interviews in Sätze aufteilen</input>
+              </div>
               <button id="buttonFinetuneModel" disabled>Modell feinanpassen</button>
             </div>
             <button onclick="switchWindow('home')">Zurück</button>

@@ -18,6 +18,7 @@ let datasetSelectionContainer = document.getElementById("datasetSelectionContain
 let buttonFinetuneModel = document.getElementById("buttonFinetuneModel")
 let modelNameInput = document.getElementById("modelNameInput")
 let statusHeading = document.getElementById("statusHeading")
+let splitSentencesFinetuningCheckbox = document.getElementById("splitSentencesFinetuningCheckbox")
 
 function handleClickModelComparison(modelId){
     selectedModelId = modelId;
@@ -48,7 +49,8 @@ function checkButtonFinetune(){
 }
 
 async function finetune(){
-    let res = await startFinetune(selectedModelId, selectedDatasetId, modifiedModelName)
+    let split = splitSentencesFinetuningCheckbox.checked;
+    let res = await startFinetune(selectedModelId, selectedDatasetId, modifiedModelName, split)
     if (res != undefined){
         let modelId = res["modified_model_id"]
         localStorage.setItem(keyModifiedModelId, modelId)

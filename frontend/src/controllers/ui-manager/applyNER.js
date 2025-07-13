@@ -19,6 +19,7 @@ let buttonExportsResults = document.getElementById("exportResults")
 let labelNERState = document.getElementById("nerState")
 let entityLegend = document.getElementById("entityLegend")
 let applyNERTextStatus = document.getElementById("applyNERTextStatus")
+let splitSentencesCheckbox = document.getElementById("splitSentencesCheckbox")
 
 let tokens = undefined
 let labels = undefined
@@ -119,7 +120,8 @@ upload.addEventListener('submit', async(e) => {
     formData.append("file", file);
 
     resetVisualizingEntities();
-    
+    let splitSentences = splitSentencesCheckbox.checked;
+    formData.append("split_sentences",splitSentences)
     let jobId = await applyNERFile(formData)
     if (jobId == undefined){
             labelNERState.textContent = "Fehler beim Starten von NER"

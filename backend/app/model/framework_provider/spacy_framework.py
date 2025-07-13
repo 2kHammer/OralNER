@@ -78,9 +78,14 @@ class SpacyFramework(Framework):
             results.append([{"text":ent.text, "type":ent.label_,"start_token":ent.start,"end_token":ent.end-1,"start_pos":ent.start_char} for ent in doc.ents])
         return results, tokens
 
-    def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.1, test_size=0.1,
-                              split_sentences=False):
-        train, valid, test  = self._train_test_split(rows, train_size, validation_size, test_size)
+    def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.2,
+                              split_sentences=False, seed=None):
+        if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
+            raise TypeError("Expects an object of type ADGRow")
+        train, valid, test  = self._train_test_split(rows, train_size, validation_size, seed=seed)
+        if split_sentences:
+            train = data_registry.split_training_data_sentences(train)
+            valid = data_registry.split_training_data_sentences(valid)
         self._bio_to_spacy(train,SPACY_TRAININGSDATA_PATH+"/train.spacy")
         self._bio_to_spacy(valid,SPACY_TRAININGSDATA_PATH+"/valid.spacy")
         return None, None
@@ -194,12 +199,12 @@ class SpacyFramework(Framework):
         metrics = self._calc_metrics(annoted_labels, predicted_labels)
         return tokens, predicted_labels, metrics
 
-    def _bio_to_spacy(self, rows, output_path, lang="de"):
+    def _bio_to_spacy(self, data, output_path, lang="de"):
         nlp = spacy.blank(lang)
         doc_bin = DocBin()
 
-        for row in rows:
-            doc = self._create_doc(nlp,row.tokens, row.labels)
+        for row_sen in data:
+            doc = self._create_doc(nlp,row_sen.tokens, row_sen.labels)
             doc_bin.add(doc)
 
         doc_bin.to_disk(output_path)
