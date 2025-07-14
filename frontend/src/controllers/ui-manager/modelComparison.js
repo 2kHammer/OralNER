@@ -109,10 +109,14 @@ async function setModelActive(){
 }
 
 export async function initComparisonWindow(){
-  let models = await getModels();
-  if (models != undefined){
-    let modelData = createModelTableVals(models);
-    createTable(modelData,modelColumns, container, handleClickModelComparison);
+  try{
+    let models = await getModels();
+    if (models != undefined){
+      let modelData = createModelTableVals(models);
+      createTable(modelData,modelColumns, container, handleClickModelComparison);
+    } 
+  }catch(e){
+    console.error("No Server connection for model comparison")
   }
 }
 

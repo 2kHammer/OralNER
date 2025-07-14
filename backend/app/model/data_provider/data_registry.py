@@ -153,6 +153,21 @@ class DataRegistry:
                 idx += 1
         return rows
 
+    def check_convert_adg_file(self, file, steps=5):
+        try:
+            reader = csv.reader(file, delimiter=';', quoting=csv.QUOTE_NONE)
+            step = 0
+            for row in reader:
+                step += 1
+                if step == steps:
+                    if len(row) > 0:
+                        extract_ADG_row(row, self.__class__.nlp, 1)
+                    step = 0
+        except:
+            return False
+        return True
+
+
     def _save_rows_as_json(self, rows,path):
         rows_dicts = []
         for row in rows:

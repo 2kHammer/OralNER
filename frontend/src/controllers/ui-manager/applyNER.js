@@ -20,6 +20,7 @@ let labelNERState = document.getElementById("nerState")
 let entityLegend = document.getElementById("entityLegend")
 let applyNERTextStatus = document.getElementById("applyNERTextStatus")
 let splitSentencesCheckbox = document.getElementById("splitSentencesCheckbox")
+let buttonUploadNERFile = document.getElementById("buttonUploadNERFile")
 
 let tokens = undefined
 let labels = undefined
@@ -45,6 +46,7 @@ buttonApplyNER.onclick = async () =>{
             localStorage.setItem("job_id",jobId)
             localStorage.setItem("labels",false)
             startApplyNERInterval(false);
+            disEnableApplyNERText(true);
         }
     }
 
@@ -112,8 +114,12 @@ upload.addEventListener('submit', async(e) => {
     const file = input.files[0];
 
     if (!file) {
-      alert("Bitte eine Datei auswählen");
+      alert("Bitte eine csv-Datei auswählen");
       return;
+    }
+    if (!file.name.endsWith(".csv")){
+        alert("Bitte eine csv-Datei auswählen")
+        return;
     }
   
     const formData = new FormData();
@@ -129,8 +135,41 @@ upload.addEventListener('submit', async(e) => {
             localStorage.setItem("job_id",jobId)
             localStorage.setItem("labels", true)
             startApplyNERInterval(true);
+            disEnableApplyNERFile(true);
         }
 })
+
+function disEnableApplyNERFile(disable){
+    buttonExportsResults.disabled = disable;
+    buttonUploadNERFile.disabled = disable;
+    textarea.contentEditable = "false";
+    if (disable == false){
+        textarea.contentEditable = "true"
+        //only enable if text is in textartea
+        if (textarea.innerHTML != ""){
+            buttonApplyNER.disabled = disable;
+        }
+    } else {
+        textarea.contentEditable = "false"
+        buttonApplyNER.disabled = disable;
+    }
+}
+
+function disEnableApplyNERText(disable){
+    let elements = upload.elements;
+    buttonApplyNER.disabled = disable;
+    for (let i = 0; i < elements.length; i++){
+        if((elements[i] == buttonExportsResults) && !disable){
+            console.log(tokens)
+            if (tokens != undefined && labels != undefined){
+                elements[i].disabled = disable;
+            } 
+        } else{
+            //disable or enable all elements
+            elements[i].disabled = disable;
+        }
+    }
+}
 
 function createExportFile(){
     let exportFile = ""
@@ -149,6 +188,9 @@ function createExportFile(){
     a.click();
     document.body.removeChild(a); 
     URL.revokeObjectURL(url);
+    upload.reset();
+    tokens = undefined
+    labels = undefined
     buttonExportsResults.disabled = true;
 }
 
@@ -179,7 +221,6 @@ async function checkNERResults(withLabels){
 }
 
 function handleNERResultsFile(state, res){
-    console.log("NER Result File")
     let reset = true;
     if(state){
         let result = res["result"][2]
@@ -188,12 +229,14 @@ function handleNERResultsFile(state, res){
         tokens = res["result"][0];
         labels = res["result"][1];
         buttonExportsResults.disabled = false;
+        disEnableApplyNERFile(false);
     } else if (state == false){
         labelNERState.innerHTML = "NER wird durchgeführt"
         labelNERState.style.color = "red"
         reset = false;
     } else{
         labelNERState.innerHTML = "Fehlerhafte JobId"
+        disEnableApplyNERFile(false);
     }
     return reset;
 }
@@ -204,11 +247,13 @@ function handleNERResultsText(state, res){
         let result = res["result"]
         visualizeEntities(result[0], result[1])
         applyNERTextStatus.textContent = "";
+        disEnableApplyNERText(false);
     } else if (state == false) {
         applyNERTextStatus.textContent = "NER wird durchgeführt"
         reset = false;
     } else {
         applyNERTextStatus.textContent = "Fehlerhafte JobId"
+        disEnableApplyNERText(false);
     }
     return reset;
 }

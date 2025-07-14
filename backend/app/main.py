@@ -80,7 +80,6 @@ if __name__ == '__main__':
     app = Flask(__name__)
     app.register_blueprint(api)
     CORS(app)
-    app.run(debug=False)
 
     @app.after_request
     def add_cache_control_headers(response):
@@ -88,6 +87,7 @@ if __name__ == '__main__':
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
         return response
-    
+
+    app.run(host='0.0.0.0',debug=False)
 
 

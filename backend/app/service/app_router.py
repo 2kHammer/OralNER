@@ -61,6 +61,8 @@ def apply_ner():
             split_sentences = (split_sentences_str == "true")
             decoded_file = file.read().decode("utf-8").splitlines()
             job_id = ner_manager.start_ner(decoded_file, True, split_sentences)
+            if job_id == "-1":
+                return jsonify({"error":"file is not in the adg-format"}), 422
             return jsonify({"job_id":job_id}), 200
         return jsonify({'error': 'No valid text or file provided'}), 400
     except Exception as e:

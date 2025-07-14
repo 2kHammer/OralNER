@@ -21,6 +21,12 @@ def start_ner(content, with_file, use_sentences=False):
     elif framework_name.name == 'SPACY':
         framework = SpacyFramework()
 
+    #check if file has the correct format
+    if with_file:
+        correct_file_format =data_registry.check_convert_adg_file(content)
+        if not correct_file_format:
+            return "-1"
+
     job_id = str(uuid.uuid4())
     with lock:
         ner_jobs[job_id] = None

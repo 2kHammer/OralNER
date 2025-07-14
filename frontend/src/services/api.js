@@ -38,7 +38,6 @@ export async function setActiveModel(id){
 
 export async function applyNERText(text){
     const res = await fetch(`${API_BASE_URL}/ner`,{method:'POST',headers: { "Content-Type": "application/json" },body: JSON.stringify({text})})
-    console.log(res)
     if (res.status == 200){
         let responseData = await res.json()
         return responseData["job_id"]
@@ -53,6 +52,7 @@ export async function applyNERFile(formData){
         let responseData = await res.json()
         return responseData.job_id
     } else {
+        console.log(res.status)
         return undefined;
     }
 }

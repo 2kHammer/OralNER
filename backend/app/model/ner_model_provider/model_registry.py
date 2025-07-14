@@ -38,7 +38,11 @@ class ModelRegistry:
             return None
     
     def create_modified_model(self, new_model_name, base_model):
-        return NERModel(3, new_model_name, base_model.framework_name, base_model.name,MODIFIED_MODELS_PATH+"/"+new_model_name)
+        # change path to relative4
+        abs_path = MODIFIED_MODELS_PATH+"/"+new_model_name
+        index_store = abs_path.find("app/")
+        relative_modified_model_path = abs_path[index_store:]
+        return NERModel(3, new_model_name, base_model.framework_name, base_model.name,relative_modified_model_path)
 
     def set_current_model(self,id):
         index_model = self._get_index_model_id(id)

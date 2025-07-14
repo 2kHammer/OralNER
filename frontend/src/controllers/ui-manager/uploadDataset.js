@@ -53,9 +53,9 @@ datasetUploadButton.addEventListener("click", async () =>{
     datasetUploadStatusLabel.textContent = "Hochladen begonnen";
     disableEnableForm(true);
     if (await uploadTrainingData(datasetFileInput.files[0], datasetName)){
-        datasetUploadStatusLabel.textContent = "Hochladen erfolgreich"
+        datasetUploadStatusLabel.textContent = "Hochladen bzw. Konvertieren erfolgreich"
     } else{
-        datasetUploadStatusLabel.textContent = "Hochladen nicht erfolgreich"
+        datasetUploadStatusLabel.textContent = "Hochladen bzw. Konvertieren nicht erfolgreich"
     }
     disableEnableForm(false);
     resetUploadDataset(false)

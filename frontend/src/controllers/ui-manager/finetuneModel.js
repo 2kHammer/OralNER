@@ -88,6 +88,7 @@ function endCheckIfModelIsInFinetuning(){
 }
 
 export async function initFinetuningWindow() {
+    try{
     let models = await getModels();
     if (models != undefined){
         let modelVals = createModelTableVals(models)
@@ -103,6 +104,9 @@ export async function initFinetuningWindow() {
     checkIfModelIsInFinetuning()
     if (localStorage.getItem(keyModifiedModelId)){
         startCheckIfModelIsInFinetuning();
+    }
+    } catch(e){
+        console.error("No Server connection for model finetuning")
     }
 }
 

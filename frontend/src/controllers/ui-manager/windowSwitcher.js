@@ -1,4 +1,4 @@
-import { getActiveModelname} from "../service-manager/modelManagement.js";
+import  {getActiveModel} from "../../services/api.js"
 import { initComparisonWindow } from "./modelComparison.js";
 import { initFinetuningWindow } from "./finetuneModel.js";
 import { resetUploadDataset } from "./uploadDataset.js";
@@ -26,8 +26,9 @@ async function switchWindow(id) {
 
 async function initHome(){
   //set active Model Name
-  let activeModelName = await getActiveModelname()
-  let activeModelText = "Keine Server Verbindung"
+  let activeModel = await getActiveModel()
+  let activeModelName = activeModel.name;
+  let activeModelText = ""
   if (activeModelName != undefined){
     activeModelText = "Aktuelles Modell: "  + activeModelName
   }
@@ -36,6 +37,14 @@ async function initHome(){
 
 //global 
 window.switchWindow = switchWindow
-//first init Home
-initHome();
+
+//test if server is available
+try{
+  await getActiveModel();
+  
+  //first init Home, if no error in server connection
+  initHome();
+} catch(exception){
+  await switchWindow("noserver")
+}
   

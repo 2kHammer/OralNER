@@ -1,0 +1,6 @@
+.idea/
+.pytest_cache/
+.venv/
+app/__pycache__/
+app/store/NER-Models/modified
+tests/

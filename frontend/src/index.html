@@ -10,6 +10,9 @@
   </head>
   <body>
     <main>
+        <div id="noserver" class="window">
+          Keine Server Verbindung
+        </div>
         <div id="home" class="window active">
           <div></div> <!--Linker Abstand-->
           <div class="content">
@@ -19,7 +22,7 @@
               <form id="uploadForm">
                 <input type="file" id="fileInput" name="file" />
                 <input type="checkbox" id="splitSentencesCheckbox">Trennung in Sätze</input>
-                <button>Hochladen & Anwenden</button>
+                <button id="buttonUploadNERFile">Hochladen & Anwenden</button>
                 <button id="exportResults" disabled>Export Ergebnisse</button>
               </form>
               <div id="nerState"></div>
@@ -98,7 +101,6 @@
 
     <!-- scripts-->
      <script type="module" src="services/api.js"></script>
-     <script type="module" src="controllers/service-manager/modelManagement.js"></script>
     <script type="module" src="controllers/ui-manager/windowSwitcher.js"></script>
     <script type="module" src="controllers/ui-manager/modelComparison.js"></script>
     <script type="module" src="controllers/ui-manager/applyNER.js"></script>
