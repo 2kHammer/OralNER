@@ -2,7 +2,7 @@ import threading
 import uuid
 from threading import Thread
 
-from app.model.data_provider.data_registry import data_registry, simple_split_sentences
+from app.model.data_provider.data_registry import data_registry
 from app.model.framework_provider.flair_framework import FlairFramework
 from app.model.framework_provider.huggingface_framework import HuggingFaceFramework
 from app.model.framework_provider.spacy_framework import SpacyFramework

@@ -1,6 +1,8 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import List, Tuple
 import re
+
+# ADG = "Archiv Deutsches Gedächtnis"
 
 @dataclass
 class ADGSentence:
@@ -26,11 +28,10 @@ class ADGRow:
     other: List[Tuple[str, str]]
     
 
-# check the format of the data und try to make it better - if I have time
-def extract_ADG_row(row, nlp,idx):
+def extract_adg_row(row, nlp, idx):
     """
     Return the ADGRow from a row.
-    If an annotated entity doesn't match to words or it contains only the type -> saved in other
+    If an annotated entity doesn't match to words or it contains only the type -> saved in "other"
 
     Parameters:
         -row: string of one ADG ROW

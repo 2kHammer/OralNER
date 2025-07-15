@@ -58,6 +58,7 @@ export function createTable(data,columns, container, handleClickModel) {
 export function createModelTableVals(models){
   let modelVals = []
   models.forEach(model => {
+      if(model.state != "IN_TRAINING"){
       let rowData = [model.id, model.name, model.framework_name, model.base_model_name]
       let trainingsData = undefined
       if (model.trainings.length > 0){
@@ -74,6 +75,7 @@ export function createModelTableVals(models){
       }
       rowData = rowData.concat(trainingsData)
       modelVals.push(rowData)
+    }
   });
   return modelVals
 }

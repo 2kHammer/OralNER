@@ -43,6 +43,9 @@ buttonApplyNER.onclick = async () =>{
         if (jobId == undefined){
             applyNERTextStatus.textContent = "Fehler beim Starten von NER"
         } else{
+            //reset Results from file
+            labelNERState.innerHTML = ""
+
             localStorage.setItem("job_id",jobId)
             localStorage.setItem("labels",false)
             startApplyNERInterval(false);

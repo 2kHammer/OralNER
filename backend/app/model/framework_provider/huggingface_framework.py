@@ -6,8 +6,8 @@ from datasets import Dataset, DatasetDict
 from evaluate import load
 import numpy as np
 
-from app.model.data_provider.data_registry import simple_split_sentences, simple_tokenizer, data_registry
 from app.model.data_provider.adg_row import ADGRow
+from app.model.data_provider.data_registry import data_registry
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.helpers import delete_checkpoints_folder
 

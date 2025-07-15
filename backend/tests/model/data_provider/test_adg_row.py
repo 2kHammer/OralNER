@@ -2,7 +2,7 @@ import csv
 import re
 import spacy
 
-from app.model.data_provider.adg_row import extract_ADG_row
+from app.model.data_provider.adg_row import extract_adg_row
 from app.utils.config import TRAININGSDATA_PATH, DEFAULT_TOKENIZER_PATH
 
 test_file = []
@@ -26,7 +26,7 @@ nlp = spacy.load(DEFAULT_TOKENIZER_PATH)
 
 def test_example_normal_row():
     row = test_file[6]
-    adg_row = extract_ADG_row(row,nlp, 0)
+    adg_row = extract_adg_row(row, nlp, 0)
     # check amount entities
     assert len(adg_row.entities) == 3
 
@@ -48,12 +48,12 @@ def test_example_entity_in_another_token():
     wort_after_insert = "runtergeleitet"
     index = row[0].find(wort_after_insert) + len(wort_after_insert)
     row[0] = row[0][:index] + "Bürgermeister" + row[0][index:]
-    adg_row = extract_ADG_row(row,nlp, 1)
+    adg_row = extract_adg_row(row, nlp, 1)
     # no third entry is added
     assert adg_row.labels.count("B-ROLE") == 2
 
 def test_inner_labes(row=test_file[3]):
-    adg_row = extract_ADG_row(row,nlp, 2)
+    adg_row = extract_adg_row(row, nlp, 2)
     for entity in adg_row.entities:
         doc = nlp(entity["entity_text"])
         tokens = [token.text for token in doc]
@@ -69,7 +69,7 @@ def test_inner_labes(row=test_file[3]):
 # check if not found entity texts are in other
 def test_not_found_entity(row=test_file2[87]):
     print("test")
-    extracted_row = extract_ADG_row(row,nlp, 3)
+    extracted_row = extract_adg_row(row, nlp, 3)
     first_column = row[0].split("\t")
     first_column.extend(row[1:])
     entities = []

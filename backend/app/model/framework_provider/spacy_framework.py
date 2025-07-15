@@ -11,7 +11,7 @@ from spacy.cli.train import train
 from typing_extensions import override
 
 from app.model.data_provider.adg_row import ADGRow
-from app.model.data_provider.data_registry import simple_split_sentences, data_registry
+from app.model.data_provider.data_registry import data_registry
 from app.model.framework_provider.framework import Framework, FrameworkNames
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.config import SPACY_TRAININGSDATA_PATH

@@ -3,9 +3,9 @@ import os
 from app.model.framework_provider.framework import Framework, FrameworkNames
 from app.model.ner_model_provider.model_registry import ModelRegistry
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
-from app.utils.config import STORE_PATH
+from app.utils.config import STORE_PATH, STORE_TEMP_PATH
 
-test_path = STORE_PATH +  "/metadata.json"
+test_path = STORE_TEMP_PATH +  "/metadata.json"
 ModelRegistry._reset_instance()
 def delete_test_metadata():
     if os.path.exists(test_path):

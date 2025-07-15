@@ -3,6 +3,7 @@ import os
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 STORE_PATH  = os.path.abspath(os.path.join(CURRENT_DIR,"..","store"))
+STORE_TEMP_PATH = os.path.abspath(os.path.join(STORE_PATH,"Temp"))
 TRAININGSDATA_PATH = os.path.abspath(os.path.join(STORE_PATH,"Trainingsdata"))
 TRAININGSDATA_CONVERTED_PATH = os.path.abspath(os.path.join(TRAININGSDATA_PATH,"Converted"))
 MODELS_PATH = os.path.abspath(os.path.join(STORE_PATH,"NER-Models"))

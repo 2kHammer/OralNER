@@ -52,7 +52,9 @@ def apply_ner():
     try:
         if request.is_json:
             data = request.get_json()
-            text = data['text']
+            text = data.get('text')
+            if text is None:
+                return jsonify({'error': 'Missing required parameter "text"'}), 400
             job_id = ner_manager.start_ner(text, False)
             return jsonify({"job_id":job_id}), 200
         elif "file" in request.files:
@@ -95,11 +97,10 @@ def finetune():
             parameters = data.get("parameters")
             name = parameters.get("new_model_name")
             split_sentences = parameters.get("split_sentences")
-            if model_id is None or dataset_id is None or name is None:
+            if model_id is None or dataset_id is None or name is None or split_sentences is None:
                 return jsonify({'error': 'No valid model_id or dataset_id or parameters provided'}), 400
             model_id = ner_manager.finetune_ner(model_id, dataset_id, name, split_sentences)
             return jsonify({"modified_model_id": model_id}), 202
-
     except Exception as e:
         abort(500, description="Internal Server Error: " + str(e))
 
@@ -115,7 +116,7 @@ def add_trainingsdata():
             if add_data_ok:
                 return '',201
             else:
-                return jsonify({'error': 'no valid dataset format'}), 400
+                return jsonify({"error": "file is not in the adg-format"}), 422
         else:
             return jsonify({'error': 'No file provided'}), 400
     except Exception as e:
