@@ -15,40 +15,39 @@
         </div>
         <div id="home" class="window active">
           <div></div> <!--Linker Abstand-->
-          <div class="content">
-            <h1>OralNER</h1>
-            <div>
-              Transkribiertes Interview einfügen oder hochladen
+          <div class="content home-container">
+            <div class="row1">
+              <h1>OralNER</h1>
+              <h3>Text einfügen oder transkribiertes Interview hochladen</h3>
               <form id="uploadForm">
-                <input type="file" id="fileInput" name="file" />
-                <input type="checkbox" id="splitSentencesCheckbox">Trennung in Sätze</input>
-                <button id="buttonUploadNERFile">Hochladen & Anwenden</button>
-                <button id="exportResults" disabled>Export Ergebnisse</button>
+                <input type="file" class="distance" id="fileInput" name="file"/>
+                <input type="checkbox" class="distance" id="splitSentencesCheckbox">Trennung in Sätze</input>
+                <div>
+                  <button id="buttonUploadNERFile" class="distance">Hochladen & Anwenden</button>
+                  <button id="exportResults" class="distance" disabled>Export Ergebnisse</button>
+                </div>
               </form>
               <div id="nerState"></div>
             </div>
-            <div>
-              <div id="userText" contenteditable="true" class="editable"></div>
+            <div class="row2">
+              <div id="userText" contenteditable="true" class="editable distance"></div>
               <div id="entityLegend"></div>
               <button id="buttonApplyNER" disabled>Anwenden auf Text</button>
               <label id="applyNERTextStatus"></label>
             </div>
-            <div>
+            <div class="row2-1">
+              <h3>Aktuelles Modell</h3>
               <p id="actualModel"></p>
-            </div>
-            <div>
               <button onclick="switchWindow('finetuning')">Modell feinanpassen</button>
               <button onclick="switchWindow('comparison')">Modelle vergleichen</button>
             </div>
-            <br><br>
-            <div>
+            <div class="row2-2">
               <h3>Datensatz hochladen: </h3>
               <form id="datasetUploadForm">
                 <label for="datasetNameInput"> Datensatzname:</label>
-                <input type="text" id="datasetNameInput" required>
+                <input type="text" id="datasetNameInput" class="distance" required>
                 <br>
-                <label for="datasetFileInput">Datei auswählen:</label>
-                <input type="file" id="datasetFileInput" required>
+                <input type="file" id="datasetFileInput" class="distance" required>
                 <br>
                 <button id="datasetUploadButton" type="button" disabled> Hochladen</button>
               </form>

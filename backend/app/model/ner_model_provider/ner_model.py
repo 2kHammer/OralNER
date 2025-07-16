@@ -22,12 +22,24 @@ class NERModel:
         self.name = name
         self.framework_name = framework_name
         self.base_model_name = base_model_name
-        self.storage_path = storage_path
         self.trainings = []
-    
-    def append_training(self, date:int, dataset_name:str, dataset_id: int,results: TrainingResults,trainings_args: dict):
+        #make path relative if possible
+        index_app = storage_path.find("app/")
+        if index_app != -1:
+            self.storage_path = storage_path[index_app:]
+        else:
+            self.storage_path = storage_path
+
+    def append_training(self, date:str, dataset_name:str, dataset_id: int,results: TrainingResults,trainings_args: dict):
         """
         Append another training to `trainings`
+
+        Parameters
+        date (str): the date in format "%Y.%m.%d-%H.%M.%S"
+        dataset_name (str): the name of the dataset
+        dataset_id (int): the id of the dataset
+        results (TrainingResults): the training results
+        args: the args used for training, free format
         """
         self.trainings.append({
             "date": date,
@@ -37,20 +49,21 @@ class NERModel:
             "metrics": results,
         })
 
-    def set_id(self, id:int):
-        self.id = id
+    def set_id(self, id_:int):
+        self.id = id_
 
     def set_state(self, state:int):
         """
         Sets the state of the NER Model with a number matching to `FrameworkNames
         """
-        if state > 0 and state < 4:
+        if 0 < state < 4:
             self.state = ModelState(state)
         else:
             raise ValueError("Invalid state")
 
 
     def to_dict(self):
+        """ Converts `self` to a dict"""
         return {
             "id": self.id,
             "state": self.state.name,
@@ -72,6 +85,7 @@ class NERModel:
 
     @classmethod
     def from_dict(cls, d: dict):
+        """Convert a matching dict to a ```NERModel"""
         model = cls(
             state=ModelState[d["state"]],
             name=d["name"],

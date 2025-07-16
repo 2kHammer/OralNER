@@ -10,7 +10,16 @@ class FrameworkNames(Enum):
 
 entity_types = []
 
+
+# -------------------------------------
+# abstract class Framework
+# -------------------------------------
 class Framework(ABC):
+    """Abstract class for the frameworks"""
+
+    # -------------------------------------
+    # public functions
+    # -------------------------------------
     @property
     @abstractmethod
     def default_finetuning_params(self):
@@ -98,7 +107,20 @@ class Framework(ABC):
         """
         pass
 
+    # -------------------------------------
+    # private non-abstract functions
+    # -------------------------------------
     def _calc_metrics(self, annoted_labels, predicted_labels):
+        """Calcs the default metrics from the predicted and annoted labels
+
+        Parameters:
+        annoted_labels (list[list])
+        predicted_labels (list[list])
+
+        Returns
+        (dict): with "f1", "recall", "precision" and "accuracy"
+
+        """
         return {
             "f1": round(float(f1_score(annoted_labels, predicted_labels)),2),
             "recall": round(float(recall_score(annoted_labels, predicted_labels)),2),
@@ -108,6 +130,15 @@ class Framework(ABC):
 
     # only für flair and spacy
     def _convert_ner_results_to_format(self, ner_results):
+        """
+        Convert the `ner-results` to tokens and and labels
+
+        Parameters:
+        ner_results (list, list): the output from flair and spacy apply_ner(), the second list contains the tokens
+
+        Returns:
+        (list, list): the first list contains the tokens, the second the annoted labels
+        """
         results, tokens = ner_results
         labels = []
         for index, token_sentence in enumerate(tokens):
@@ -122,10 +153,22 @@ class Framework(ABC):
             labels.append(label_sentence)
         return tokens, labels
 
-    # data should be the rows, then the statements are not parted
     # danger of data leakage: some sentences of statement in train, some in test
-    # lerns the entities of the senteces in the train, test sentence use the same entities -> test is too good
+    # -> the statements should be splitted and the parted into sentences
     def _train_test_split(self,data, train_size=0.8, valid_size=0.2, test_size=0, seed=None):
+        """
+        Splits the `data` randomly according to the specified sizes
+
+        Parameters
+        data (list): the data to split, splits the elements in the list
+        train_size (float):  share the training dataset should get
+        valid_size (float): share the valid dataset should get
+        test_size (float): share the test dataset should get
+        seed (int): for reproducibility
+
+        Returns:
+        (list, list,list): train, valid and test
+        """
         if seed:
             random.seed(seed)
         shuffled = data.copy()

@@ -82,6 +82,15 @@ def test_prepare_training_data(model_id=3,training_data_id=1,size_test=200):
                 amount_rows_labels += 1
     assert amount_corpus_labels == amount_rows_labels
 
+# checks only if the corpus is created
+def test_prepare_training_data_split(model_id=3,training_data_id=4,size_test=20):
+    ff = FlairFramework()
+    ff.load_model(model_registry.list_model(model_id))
+    rows = data_registry.load_training_data(training_data_id)
+    #[100:100+size_test]
+    corpus, label_dict =ff.prepare_training_data(rows,split_sentences=True, seed=42)
+
+
 def test_finetune_model(model_id=3,training_data_id=1):
     ff = FlairFramework()
     test_params ={
@@ -97,14 +106,7 @@ def test_finetune_model(model_id=3,training_data_id=1):
     corpus, label_dict = ff.prepare_training_data(rows[0:50])
     ff.finetune_ner_model(base_model.storage_path, corpus, label_dict,modified_name,MODIFIED_MODELS_PATH, params=test_params)
 
-def test_train_test_split(train_size=0.8, valid_size=0.1,test_size=0.1):
-    ff = FlairFramework()
-    test_data = [1]*int(100*train_size) + [2]*int(100*(valid_size+test_size))
-    train, valid, test = ff._train_test_split(test_data,train_size=train_size,valid_size=valid_size,test_size=test_size)
-    assert len(train) + len(valid) + len(test) == len(test_data)
-    assert len(train) == (100 * train_size)
-    # test shuffle
-    assert 2 in train
+
 
 
 

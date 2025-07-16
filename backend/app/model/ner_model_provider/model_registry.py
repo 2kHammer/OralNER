@@ -6,7 +6,11 @@ from ..framework_provider.framework import FrameworkNames
 
 
 
+# -------------------------------------
+# class "DataRegistry"
+# -------------------------------------
 class ModelRegistry:
+    """ Managing the models metadata"""
     _instance = None
     
     # Singleton
@@ -29,7 +33,9 @@ class ModelRegistry:
         else:
             self._models = []
 
-
+    # -------------------------------------
+    # public functions
+    # -------------------------------------
     @property
     def current_model(self):
         if len(self._models) > 0:
@@ -38,6 +44,16 @@ class ModelRegistry:
             return None
     
     def create_modified_model(self, new_model_name, base_model):
+        """
+        Creates outgoing from `base_model` a modified model
+
+        Parameters
+        new_model_name (str)
+        base_model (NERModel)
+
+        Returns
+        (NERModel): the modified model
+        """
         # change path to relative
         abs_path = MODIFIED_MODELS_PATH+"/"+new_model_name
         index_store = abs_path.find("app/")
@@ -45,6 +61,15 @@ class ModelRegistry:
         return NERModel(3, new_model_name, base_model.framework_name, base_model.name,relative_modified_model_path)
 
     def set_current_model(self,id):
+        """
+        Sets the model with `id` as active
+
+        Parameters
+        id (int)
+
+        Returns
+        (boolean): true if successful, else false
+        """
         index_model = self._get_index_model_id(id)
         if index_model is not None:
             self._current_model = self._models[index_model]
@@ -53,8 +78,17 @@ class ModelRegistry:
             return False
 
     def add_model(self,model:NERModel):
+        """
+        Adds `model` to the ModelRegistry
+
+        Parameters
+        model (NERModel)
+
+        Returns
+        (int): the model id
+        """
         model.set_id(self._get_next_id())
-        model.name = self._check_make_name_unique(model.name,get_current_datetime())
+        model.name = self._check_make_name_unique(model.name)
         self._models.append(model)
         if(len(self._models) == 1):
             self._current_model = model
@@ -62,29 +96,65 @@ class ModelRegistry:
         return model.id
 
     def add_training(self,id,dataset_name:str, dataset_id:int, metrics:TrainingResults, trainings_args: dict):
+        """
+        Adds a training to a model
+
+        Parameters
+        id (int)
+        dataset_name (str):
+        dataset_id (int):
+        metrics (TrainingResults):
+        trainings_args (dict):
+
+        Returns
+        (boolean): if the adding was successful
+        """
         index_model = self._get_index_model_id(id)
-        # erhält None von inde_model
-        model = self._models[index_model]
-        model.set_state(2)
-        model.append_training(get_current_datetime(),dataset_name,dataset_id,metrics,trainings_args)
-        self._udpate_metadata()
+        if index_model is not None:
+            model = self._models[index_model]
+            model.set_state(2)
+            model.append_training(get_current_datetime(),dataset_name,dataset_id,metrics,trainings_args)
+            self._udpate_metadata()
+            return True
+        else:
+            return False
 
 
     def list_models(self):
-        print(len(self._models))
+        """
+        Returns all models of the model registry
+        """
         return self._models
 
     def list_model(self, id):
+        """
+        Returns the model with `id`
+        """
         index = self._get_index_model_id(id)
         if index is not None:
             return self._models[index]
         else:
             return None
 
+    # -------------------------------------
+    # private functions
+    # -------------------------------------
     def _udpate_metadata(self):
+        """
+        Updates the model registry json file
+        """
         self._json_manager.update_json([model.to_dict() for model in self._models])
 
     def _get_index_model_id(self, id):
+        """
+        Return the index for the model with `id` in self._models
+
+        Parameters
+        id (int)
+
+        Returns
+        (int)
+        """
         ids = [model.id for model in self._models]
         try:
             return ids.index(id)
@@ -92,6 +162,12 @@ class ModelRegistry:
             return None
 
     def _get_next_id(self):
+        """
+        Return the next free ID in ._models
+
+        Returns
+        (int)
+        """
         ids = [model.id for model in self._models]
         if len(ids) == 0:
             return 0
@@ -101,10 +177,19 @@ class ModelRegistry:
                 return i
         return max_id +1
 
-    def _check_make_name_unique(self, new_name,date):
+    def _check_make_name_unique(self, new_name):
+        """
+        Checks if a name is unique and returns a unique name (name, data, random string) if not
+
+        Parameters
+        new_name (str): name to check
+
+        Returns:
+        (str): the name you should use
+        """
         names = [model.name for model in self._models]
         if new_name in names:
-            return new_name + "_"+ str(date)+"_" + random_string(10)
+            return new_name + "_"+ get_current_datetime()+"_" + random_string(10)
         else:
             return new_name
 

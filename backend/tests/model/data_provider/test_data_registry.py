@@ -26,7 +26,7 @@ def delete_test_dir():
 
 test_file = None
 path = TRAININGSDATA_PATH+ "/adg1220.csv"
-with open(path, newline='') as csvfile:
+with open(path, newline='',encoding="latin1") as csvfile:
     test_file = csvfile.read().splitlines()
 
 def create_add_data_registry():
@@ -152,10 +152,15 @@ def test_split_sentences():
     for index, sentence in enumerate(sentence_data):
         assert len(sentence.tokens) == len(sentence.labels)
 
-    sum_tokens = sum(len(row.tokens) for row in rows)
-    sum_tokens_sentences = sum(len(sen.tokens) for sen in sentence_data)
-    # check if the amount of tokens is the same
-    assert sum_tokens == sum_tokens_sentences
+    # check if tokens are the same without '"' and ' '
+    for row in rows:
+        sen_rows = [sen for sen in sentence_data if sen.row_index == row.idx]
+        tokens_sen = []
+        for sen in sen_rows:
+            tokens_sen += [token for token in sen.tokens if (token != ' ' and token != '"')]
+
+        tokens_row = [token for token in row.tokens if (token != ' ' and token != '"')]
+        assert tokens_sen == tokens_row
 
     for sen in sentence_data:
         # check if the amount of indexes is the same as the amount of tokens

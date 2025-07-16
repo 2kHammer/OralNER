@@ -30,7 +30,7 @@ async function initHome(){
   let activeModelName = activeModel.name;
   let activeModelText = ""
   if (activeModelName != undefined){
-    activeModelText = "Aktuelles Modell: "  + activeModelName
+    activeModelText = activeModelName
   }
   document.getElementById("actualModel").innerText = activeModelText
 }

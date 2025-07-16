@@ -117,7 +117,9 @@ class FlairFramework(Framework):
         if split_sentences:
             #statements shouldn't be split across datasets
             sentence_data_train = data_registry.split_training_data_sentences(train)
+            #sentence_data_train = [sen for sen in sentence_data_train if sen.text != '"'and sen.text != ' ']
             sentence_data_valid = data_registry.split_training_data_sentences(valid)
+            #sentence_data_valid = [sen for sen in sentence_data_valid if sen.text != '"' and sen.text != ' ']
             train_modified = [{"tokens":sen.tokens, "labels":sen.labels} for sen in sentence_data_train]
             valid_modified = [{"tokens":sen.tokens, "labels":sen.labels} for sen in sentence_data_valid]
         else:
@@ -125,8 +127,8 @@ class FlairFramework(Framework):
             valid_modified = [{"tokens":row.tokens, "labels":row.labels} for row in valid]
 
         self._create_conll_files(train_modified, valid_modified)
-        # text.txt is empty -> errors of no file is specified
-        corpus = ColumnCorpus(CONLL_PATH,{0:'text',1:'ner'},train_file="train.txt",dev_file="valid.txt",test_file="test.txt")
+        # use no test dataset -> include valid.txt twice, for no errors
+        corpus = ColumnCorpus(CONLL_PATH,{0:'text',1:'ner'},train_file="train.txt",dev_file="valid.txt",test_file="valid.txt")
         return corpus, corpus.make_label_dictionary(label_type="ner")
 
 

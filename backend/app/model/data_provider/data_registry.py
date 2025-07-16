@@ -212,6 +212,9 @@ class DataRegistry:
                 startind = sentence_token_indexes[0]
                 adapted_token_indexes = [ind - startind for ind in sentence_token_indexes]
                 sentences_data.append(ADGSentence(sentence, sentence_tokens, sentence_labels, sentences_indexes_statement[ind], row_index, adapted_token_indexes))
+
+        #remove irrelevant sentences, problems with flair
+        sentences_data = [sen for sen in sentences_data if (sen.text != '"' and sen.text != ' ')]
         return sentences_data
 
     def check_convert_adg_file(self, file, steps=5):
@@ -295,7 +298,7 @@ class DataRegistry:
 
     def _get_next_id(self):
         """
-        Return the next free ID in .datasets
+        Return the next free ID in ._datasets
 
         Returns
         (int)
@@ -358,6 +361,7 @@ class DataRegistry:
         sentence_indexes = []
         sentences = []
         for sent in doc.sents:
+
             sentences.append(sent.text)
             sentence_indexes.append((sent.start, sent.end))
         return sentences, sentence_indexes
