@@ -24,7 +24,7 @@ class Framework(ABC):
     @abstractmethod
     def default_finetuning_params(self):
         """
-        Returns a dictionary with the default finetuning params.
+        Returns a dictionary with the default finetuning params
         """
         pass
 
@@ -34,22 +34,33 @@ class Framework(ABC):
         Load the `model` in the class. Necessary for the other functions.
 
         Parameters:
-        model (NERModel): The model to load.
+        model (NERModel): The model to load
         """
         pass
 
     @abstractmethod
     def process_ner_pipeline(self,model, ner_content, use_sentences = False):
+        """
+        Loads the `model`, applys NER and converts the results
+
+        Parameters:
+        model (NERModel): The model to load
+        ner_content (List[str] | List[ADGRow]): the content on which ner should be applied
+        use_sentences (boolean): only relevant for adg_rows, should the statement be splitted into sentences
+
+        Returns:
+        (List, List, Dict): tokens, labels, Metrics
+        """
         pass
 
     # think about if the texts should be automatically be splitted into sentences
     @abstractmethod
     def apply_ner(self, texts):
         """
-        Applies NER with the loaded model on `text`
+        Applies NER with the loaded model on `texts`
 
         Parameters:
-        text ([str]): List of the statements on which NER is sequential applied. The statements can't be bigger than the max token size (512 tokens for BERT).
+        text (List[str]): List of the statements on which NER is sequential applied.
 
         Returns:
         The NER-Result for each statement in the framework-specific style.
@@ -63,11 +74,10 @@ class Framework(ABC):
         Convert the rows to the framework specific finetuning/training format
 
         Parameters:
-        rows ([ADGRow]): Input data
+        rows (List[ADGRow]): Input data
         tokenizer_path (str): Path of the tokenizer from the model which should be finetuned
-        train_size (float): Share of the rows can bd used for training
+        train_size (float): Share of the rows can be used for training
         validation_size (float): Share of the rows can be used for validation
-        test_size (float): Share of the rows can be used for testing
         split_sentences (bool): Should the statements be split for finetuning
 
         Returns:
@@ -81,7 +91,7 @@ class Framework(ABC):
         Finetune the NER model under `base_model_path`
 
         Parameters:
-        base_model_path (str): path were the model to finetune is saved
+        base_model_path (str): path were the model to finetune is stored
         data_dict (dict): contains the split data in the framework specific format
         label_id (dict): contains the entity types with their numbers
         name (str): Name of the finetuned model
@@ -100,7 +110,8 @@ class Framework(ABC):
 
         Parameters:
         ner_results (List): List of framework-specific NER results
-        ner_input (List): List of strings or of ADGRow
+        ner_input (List[str] | List[ADGRow]): List of strings or of ADGRow
+        sentences (List[ADGSentence]| None): List of sentences, if the ADGRows should be splitted in sentences
 
         Returns:
         (List, List, Dict): First List contains the tokens, second the predicted lables and the dict the metrics

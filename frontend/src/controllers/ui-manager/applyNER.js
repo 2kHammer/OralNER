@@ -267,8 +267,10 @@ async function checkIfNerIsRunning() {
         let labels = localStorage.getItem("labels")
         if (labels == "false"){
             startApplyNERInterval(false)
+            disEnableApplyNERText(true);
         } else {
             startApplyNERInterval(true)
+            disEnableApplyNERFile(true)
         }
     }
     

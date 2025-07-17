@@ -17,15 +17,26 @@ from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.config import SPACY_TRAININGSDATA_PATH
 
 '''
-    Notizen hierzu:
-        kann Transformer Modell nur als Encoder einfügen oder eine eigene Komponente
-        - eine Komponente ist nur ein Wrapper für die transformer Libary
-        
+    notes:
+        - transformer model only es encoder, no own component 
+            own component: would only be a wrapper for the transformers libary 
+        - to use "mschiessner/ner-bert-german" a base model has to be trained
+            - the ner component for the transformer-embeddings has to be trained
+            - for this I used Google Colab - to apply more steps with the gpu
+            - the config.cfg: app/store/Temp/GoogleColab/config.cfg
+            - the command to start the training: !python -m spacy train /content/drive/MyDrive/spacy/config.cfg --output /content/drive/MyDrive/spacy/Trainoutput --gpu-id 0
 '''
+# -------------------------------------
+# class SpacyFramework
+# -------------------------------------
 class SpacyFramework(Framework):
     def __init__(self):
         self.ner_model = None
         self.model = None
+
+    # -------------------------------------
+    # public functions
+    # -------------------------------------
 
     @property
     def default_finetuning_params(self):
@@ -36,6 +47,9 @@ class SpacyFramework(Framework):
         }
 
     def load_model(self, model):
+        """
+        Loads the model. For further documentation see `framework.py`
+        """
         if not isinstance(model, NERModel):
             raise TypeError("Expects an object of type NERModel")
         if model.framework_name != FrameworkNames.SPACY:
@@ -44,6 +58,9 @@ class SpacyFramework(Framework):
         self.ner_model = spacy.load(correct_model_path)
     
     def process_ner_pipeline(self, model,ner_content, use_sentences = False):
+        """
+        Processing the ner pipeline. For further documentation see `framework.py`
+        """
         if not isinstance(ner_content, list):
             if not isinstance(ner_content[0], str) or not isinstance(ner_content[0], ADGRow):
                 raise TypeError("Excepts a list of strings or ADGRows")
@@ -67,10 +84,10 @@ class SpacyFramework(Framework):
         tokens, predicted_labels, metrics =self.convert_ner_results(results,ner_content,adg_sentences)
         return tokens, predicted_labels, metrics
 
-
-
-
     def apply_ner(self, texts):
+        """
+        Applies NER on `texts`. For further documentation see `framework.py`
+        """
         results = []
         tokens = []
         for doc in self.ner_model.pipe(texts):
@@ -80,6 +97,12 @@ class SpacyFramework(Framework):
 
     def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.2,
                               split_sentences=False, seed=None):
+        """
+        Converts the rows to train.spacy and valid.spacy files in /Trainingsdata/Spacy
+
+        Returns
+        (None,None)
+        """
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
         train, valid, test  = self._train_test_split(rows, train_size, validation_size, seed=seed)
@@ -91,6 +114,10 @@ class SpacyFramework(Framework):
         return None, None
     
     def finetune_ner_model(self, base_model_path, data_dict, label_id, name, new_model_path, params=None):
+        """
+        Finetunes the NER Model. Distinguishes between spacy models and transformer models.
+         For further documentation see `framework.py`.
+        """
         if params is None:
             params = self.default_finetuning_params
 
@@ -104,15 +131,47 @@ class SpacyFramework(Framework):
             metrics, args =self._finetune_default_spacy(correct_base_model_path, new_model_path)
         return metrics, args
 
-    #https://medium.com/@zielemanj/training-and-fine-tuning-ner-transformer-models-using-spacy3-and-spacy-annotator-c3cd95fdfd23
+
+    def convert_ner_results(self, ner_results, ner_input, sentences = None):
+        """
+        Convert the ner-results.
+        For further documentation see `framework.py`.
+        """
+        if isinstance(ner_input[0], ADGRow):
+            return self._convert_ner_results_adg(ner_results, ner_input, sentences)
+        else:
+            tokens, predicted_labels = self._convert_ner_results_to_format(ner_results)
+            return tokens, predicted_labels, None
+
+    # -------------------------------------
+    # private functions
+    # -------------------------------------
     def _finetune_transformer_spacy(self, correct_base_model_path, new_model_path, params):
+        """
+        finetunes a transformer model. Uses the config.cfg of the base models and modify a few parameters.
+        Source: https://medium.com/@zielemanj/training-and-fine-tuning-ner-transformer-models-using-spacy3-and-spacy-annotator-c3cd95fdfd23
+
+        Parameters:
+        correct_base_model_path (str): the path of the base model from _get_correct_model_path
+        new_model_path (str): the path of the new model
+        params (dict): the parameters to apply like in `default_finetuning_params`
+
+        Returns:
+        (dict, params): the first dict contains f1, precision, recall, duration, accuracy = None, the second dict returns the params
+        """
+        #load config
         correct_base_model_path = self._get_correct_model_path(correct_base_model_path)
         config = load_config(correct_base_model_path+"/config.cfg")
+
+        # set train and valid datasets
         config["paths"]["train"] = SPACY_TRAININGSDATA_PATH+"/train.spacy"
         config["paths"]["dev"] = SPACY_TRAININGSDATA_PATH+"/valid.spacy"
+
+        # set the training steps
         config["training"]["max_epochs"] = params["max_epochs"]
         config["training"]["max_steps"] = params["max_steps"]
         config["training"]["eval_frequency"] = params["eval_frequency"]
+        # modifies the params that the model will be finetuned
         if "factory" in config["components"]["ner"]:
             config["components"]["ner"].pop("factory",None)
         config["components"]["ner"]["source"] = correct_base_model_path
@@ -120,6 +179,7 @@ class SpacyFramework(Framework):
             config["components"]["transformer"].pop("factory",None)
         config["components"]["transformer"]["source"] = correct_base_model_path
 
+        # saves the training config for the new model in the directory of the base model
         new_config_path = correct_base_model_path+"/train_config.cfg"
         config.to_disk(new_config_path)
         start = time.time()
@@ -130,6 +190,18 @@ class SpacyFramework(Framework):
         return metrics, params
 
     def _finetune_default_spacy(self, correct_base_model_path, new_model_path, epochs=30, minibatch_size=16):
+        """
+        Finetunes a spacy model
+
+        Parameters
+        correct_base_model_path:
+        correct_base_model_path (str): the path of the base model from _get_correct_model_path
+        epochs (int): iterations that should be trained
+        minibatch_size (int): minibatch size
+
+        Returns:
+        (dict, params): the first dict contains f1, precision, recall, duration, accuracy = None, the second dict returns the params
+        """
         nlp = spacy.load(self._get_correct_model_path(correct_base_model_path))
         train_examples = self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy", nlp)
         valid_examples = self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy", nlp)
@@ -158,12 +230,30 @@ class SpacyFramework(Framework):
         return best_metrics, {"epochs":epochs, "minibatch_size":minibatch_size}
     
     def _evaluate_transformer_model(self, path):
+        """
+        Evaluates the transformers model by applying it on the valid data.
+
+        Parameters
+        path (str): the path of the transformers model
+
+        Returns
+        (TrainingResults)
+        """
         nlp = spacy.load(path)
         valid_examples =self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy", nlp)
         scores = self._evaluate_finetune_spacy(nlp, valid_examples)
         return TrainingResults(f1=scores["ents_f"],recall=scores["ents_r"],precision=scores["ents_p"],duration=None, accuracy=None)
         
     def _evaluate_finetune_spacy(self, nlp, examples):
+        """
+
+        Parameters
+        nlp: A spacy language object from spacy.load
+        examples (Example):
+
+        Returns:
+        (dict): with the metrics in "ents_f", "ents_r", "ents_p"
+        """
         scorer = Scorer()
         examples_with_ref = []
         for example in examples:
@@ -171,28 +261,28 @@ class SpacyFramework(Framework):
             examples_with_ref.append(Example(pred, example.reference))
         return scorer.score(examples_with_ref)
 
-    def convert_ner_results(self, ner_results, ner_input, sentences = None):
-        if isinstance(ner_input[0], ADGRow):
-            return self._convert_ner_results_adg(ner_results, ner_input, sentences)
-        else:
-            tokens, predicted_labels = self._convert_ner_results_to_format(ner_results)
-            return tokens, predicted_labels, None
 
     def _convert_ner_results_adg(self, ner_results,ner_input, sentences):
+        """
+        Convert the ner_results for adg inputs. Checks if the tokens from the applied model are the same as the default adg tokens.
+        For description of the parameters and returns see `framework.py`.
+        """
         results, tokens = ner_results
         annoted_labels = None
+
+        # test if labels are the same
         if sentences:
             # check if the tokens of this spacy model are the same as the default ones
             for index, tokens_sen in enumerate(tokens):
                if tokens_sen != sentences[index].tokens:
-                   return ValueError("ADG-default tokens and model tokens are not identical")
+                   raise ValueError("ADG-default tokens and model tokens are not identical")
             annoted_labels = [sen.labels for sen in sentences]
         else:
             # check if the tokens of this spacy model are the same as the default ones
             for index, tokens_sen in enumerate(tokens):
                 # check if the adg-tokens and the model tokens are the same -> if not error
                 if tokens_sen != ner_input[index].tokens:
-                    return ValueError("ADG-default tokens and model tokens are not identical")
+                    raise ValueError("ADG-default tokens and model tokens are not identical")
             annoted_labels= [row.labels for row in ner_input]
 
         _, predicted_labels = self._convert_ner_results_to_format(ner_results)
@@ -200,6 +290,14 @@ class SpacyFramework(Framework):
         return tokens, predicted_labels, metrics
 
     def _bio_to_spacy(self, data, output_path, lang="de"):
+        """
+        Creates .spacy file the annotated data
+
+        Parameters
+        data (ADGRow | ADGSentence): the data that should be saved in an .spacy file
+        output_path (str): the path where the .spacy file should be saved
+        lang (str): to initialize the spacy language object
+        """
         nlp = spacy.blank(lang)
         doc_bin = DocBin()
 
@@ -234,6 +332,15 @@ class SpacyFramework(Framework):
         return doc
 
     def _get_correct_model_path(self, path):
+        """
+        Returns the path with meta.json from a directory, even if the model is in model-best
+
+        Parameters
+        path (str): path to check
+
+        Returns
+        (str):
+        """
         if os.path.isfile(path+"/meta.json"):
             return path
         else:
@@ -244,6 +351,16 @@ class SpacyFramework(Framework):
                 raise ValueError(f"Cannot find model in {path}")
 
     def _get_training_examples_docbin(self, path,nlp):
+        """
+        Returns the data from an spacy file as a List of Example object
+
+        Parameters
+        path: the path where the .spacy file is stored
+        nlp: the spacy language object
+
+        Returns
+        (List[Example])
+        """
         doc_bin = DocBin().from_disk(path)
         docs = list(doc_bin.get_docs(nlp.vocab))
         examples = []
