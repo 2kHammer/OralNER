@@ -15,7 +15,7 @@
         </div>
         <div id="home" class="window active">
           <div></div> <!--Linker Abstand-->
-          <div class="content home-container">
+          <div class="content home-container maxheight">
             <div class="row1">
               <h1>OralNER</h1>
               <h3>Text einfügen oder transkribiertes Interview hochladen</h3>
@@ -56,42 +56,44 @@
           </div>
           <div></div> <!--Rechter Abstand-->
         </div>
-        <div id="finetuning" class="window">
+        <div id="finetuning" class="window maxheight" style="height: 100%">
           <div></div> <!--Linker Abstand-->
           <div class="content">
             <h1>Modell feinanpassen</h1>
             <h2 id="statusHeading"></h3>
-            <div id="finetuningContainer">
+            <div id="finetuningContainer" class="maxheight">
               <h3>Modell auswählen</h3>
-              <div id="modelSelectionContainer" style="height: 35%; overflow-y: auto; border: 1px solid #ccc;">
+              <div id="modelSelectionContainer" class="table" style="height: 25%">
                 <!-- Tabelle wid per Javascript erzeugt-->
               </div>
               <h3>Datensatz auswählen</h3>
-              <div id="datasetSelectionContainer" style="height: 35%; overflow-y: auto; border: 1px solid #ccc;">
+              <div id="datasetSelectionContainer" class="table" style="height: 15%">
               </div>
               <h3>Weitere Parameter auswählen</h3>
-              <div>
-                <label for="modelNameInput">Name des anzupassenden Modells:</label>
+              <div class="distance">
+                <label>Name des anzupassenden Modells:</label>
                 <input type="text" id="modelNameInput" name="name" placeholder="Angepasster Name"></input>
               </div>
-              <div>
+              <div class="distance">
                 <input type="checkbox" id="splitSentencesFinetuningCheckbox">Interviews in Sätze aufteilen</input>
               </div>
               <button id="buttonFinetuneModel" disabled>Modell feinanpassen</button>
+              <button onclick="switchWindow('home')">Zurück</button>
             </div>
-            <button onclick="switchWindow('home')">Zurück</button>
           </div>
           <div></div> <!--Rechter Abstand-->
         </div>
-        <div id="comparison" class="window">
+        <div id="comparison" class="window maxheight">
           <div></div> <!--Linker Abstand-->
-          <div class="content">
+          <div class="content maxheight">
             <h1>Modell auswählen</h1>
-            <div id="modelComparisonContainer" style="height: 90%; overflow-y: auto; border: 1px solid #ccc;">
+            <div id="modelComparisonContainer" class="distance table" style="height: 80%">
               <!-- Tabelle wird per JavaScript hier erzeugt -->
             </div>
-            <button onclick="switchWindow('home')">Zurück</button>
-            <button id="buttonSetModelActive" disabled>Aktiv setzen</button>
+            <div>
+              <button onclick="switchWindow('home')">Zurück</button>
+              <button id="buttonSetModelActive" disabled>Aktiv setzen</button>
+            </div>
             <div id="labelFeedbackSetModelActive"></div>
           </div>
           <div></div> <!--Rechter Abstand-->

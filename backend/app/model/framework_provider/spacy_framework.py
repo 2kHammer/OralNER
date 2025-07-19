@@ -8,7 +8,6 @@ from spacy.tokens import DocBin
 from spacy.training import Example
 from spacy.util import load_config, minibatch
 from spacy.cli.train import train
-from typing_extensions import override
 
 from app.model.data_provider.adg_row import ADGRow
 from app.model.data_provider.data_registry import data_registry
@@ -42,7 +41,7 @@ class SpacyFramework(Framework):
     def default_finetuning_params(self):
         return {
             'max_epochs': 0,
-            'max_steps': 800,
+            'max_steps': 400,
             'eval_frequency': 20
         }
 
@@ -265,7 +264,7 @@ class SpacyFramework(Framework):
     def _convert_ner_results_adg(self, ner_results,ner_input, sentences):
         """
         Convert the ner_results for adg inputs. Checks if the tokens from the applied model are the same as the default adg tokens.
-        For description of the parameters and returns see `framework.py`.
+        For further documentation see `framework.py`.
         """
         results, tokens = ner_results
         annoted_labels = None
@@ -308,6 +307,17 @@ class SpacyFramework(Framework):
         doc_bin.to_disk(output_path)
 
     def _create_doc(self, nlp, tokens, labels):
+        """
+        Creates a spacy DocBin Object from `tokens` and `labels`
+
+        Parameters
+        nlp (spacy language object)
+        tokens (List[str])
+        labels (List[str]): the corresponding labels to the tokens
+
+        Returns
+        (DocBin)
+        """
         doc = nlp.make_doc(" ".join(tokens))
         ents = []
         start = 0
@@ -355,8 +365,8 @@ class SpacyFramework(Framework):
         Returns the data from an spacy file as a List of Example object
 
         Parameters
-        path: the path where the .spacy file is stored
-        nlp: the spacy language object
+        path (str): the path where the .spacy file is stored
+        nlp (the spacy language object)
 
         Returns
         (List[Example])

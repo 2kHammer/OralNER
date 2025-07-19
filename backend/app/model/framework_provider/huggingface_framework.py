@@ -1,4 +1,4 @@
-from lib2to3.btm_utils import tokens
+#from lib2to3.btm_utils import tokens
 
 from .framework import Framework, FrameworkNames
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline, DataCollatorForTokenClassification, TrainingArguments, Trainer
@@ -12,12 +12,18 @@ from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.helpers import delete_checkpoints_folder
 
 
+# -------------------------------------
+#class HuggingFaceFramework
+# -------------------------------------
 class HuggingFaceFramework(Framework):
     def __init__(self):
         self.ner_model = None
         self.model = None
         self.tokenizer = None
 
+    # -------------------------------------
+    # public functions
+    # -------------------------------------
     @property
     def default_finetuning_params(self):
         return {
@@ -34,6 +40,9 @@ class HuggingFaceFramework(Framework):
         }
 
     def load_model(self, model):
+        """
+        Loads the model. For further documentation see `framework.py`
+        """
         if not isinstance(model, NERModel):
             raise TypeError("Expects an object of type NERModel")
         if model.framework_name != FrameworkNames.HUGGINGFACE:
@@ -43,6 +52,9 @@ class HuggingFaceFramework(Framework):
         self.tokenizer = AutoTokenizer.from_pretrained(model.storage_path)
 
     def process_ner_pipeline(self, model, ner_content, use_sentences=False):
+        """
+        Processing the ner pipeline. For further documentation see `framework.py`
+        """
         if not isinstance(ner_content, list):
             if not isinstance(ner_content[0], str) or not isinstance(ner_content[0], ADGRow):
                 raise TypeError("Excepts a list of strings or ADGRows")
@@ -68,6 +80,15 @@ class HuggingFaceFramework(Framework):
         return tokens, predicted_labels, metrics
 
     def apply_ner(self, texts):
+        """
+        Applies NER on `texts`. For further documentation see `framework.py`
+
+        Parameters
+        texts (List[str])
+
+        Returns
+        (List[List[dict]]): the list contains the ner-result for each statement, in the list of dictionaries stands es each for one entity
+        """
         ner_results = []
         for text in texts:
             # maybe change the aggregation strategy
@@ -78,6 +99,13 @@ class HuggingFaceFramework(Framework):
 
     def prepare_training_data(self, rows, tokenizer_path=None, train_size=0.8, validation_size=0.2,
                               split_sentences=False, seed=None):
+        """
+        Convert the rows to a DatasetDict with train and validation data
+        For further documentation see `framework.py`
+
+        Returns
+        (DatasetDict): Contains for train and test: 'tokens','labels', 'input_ids','token_type_ids' and 'attention_mask'
+        """
         if not isinstance(rows, list) or not isinstance(rows[0], ADGRow):
             raise TypeError("Expects an object of type ADGRow")
 
@@ -114,6 +142,11 @@ class HuggingFaceFramework(Framework):
 
 
     def finetune_ner_model(self,base_model_path,data_dict, label_id, name,new_model_path,params=None):
+        """
+        Finetunes the a huggingface base model.
+        For further documentation see ´framework.py´.
+        Built according to the Token Classification Tutorial: https://huggingface.co/docs/transformers/tasks/token_classification
+        """
         if params is None:
             params = self.default_finetuning_params
 
@@ -164,16 +197,25 @@ class HuggingFaceFramework(Framework):
         return self._convert_metrics(metrics,train_results.metrics["train_runtime"]), args
 
 
-    # split function
-    # add a less strict type comparison, without B- and I-
     def convert_ner_results(self,ner_results, ner_input, sentences = None):
+        """
+        Convert the ner-results.
+        For further documentation see `framework.py`.
+        """
         if isinstance(ner_input[0], ADGRow):
             return self._convert_ner_results_adg(ner_results, ner_input, sentences)
         else:
             tokens, predicted_labels = self._convert_ner_results_not_adg(ner_results, ner_input)
             return tokens, predicted_labels, None
 
+    # -------------------------------------
+    # private functions
+    # -------------------------------------
     def _convert_ner_results_adg(self, ner_results, ner_input, sentences):
+        """
+        Convert the ner-results for adg-files.
+        Has to map the tokens from the hf-model to the default tokens, same for the labels
+        """
         metrics = None
         tokens = []
         predicted_labels = []
@@ -217,6 +259,11 @@ class HuggingFaceFramework(Framework):
         return tokens, predicted_labels, metrics
 
     def _convert_ner_results_not_adg(self, ner_results, ner_input):
+        """
+        Convert the ner-results for normal texts.
+        First need to tokenize them with the same model which applied ner.
+        Then the subtokens need to mapped to one token, same for the labels.
+        """
         tokens = []
         predicted_labels = []
         for index_sentence, sentence in enumerate(ner_input):
@@ -253,17 +300,17 @@ class HuggingFaceFramework(Framework):
             predicted_labels.append(labels_sentence)
         return tokens, predicted_labels
 
-    #from https: // huggingface.co / docs / transformers / tasks / token_classification
     def _tokenize_and_align_labels(self, statement, tokenizer_path):
         """
-        Map the tokens to token-ids and give the subtokens -100 (they don't influence the model in the learning process, no impact on interference)
+        Tokenize the input tokens with the model and give the subtokens in the labels -100 (they don't influence the model in the learning process, no impact on interference)
+        Copied from the tutorial: https://huggingface.co/docs/transformers/tasks/token_classification
 
         Parameters:
         statement (dict): contains the word tokens
         tokenizer_path (str): path to the tokenizer
 
         Returns:
-        Dateset: With "tokens", "labels" - contains the token-ids and the -100, "input_ids", "token_type_ids", "attention_mask"
+        Object: with "labels" - contains the labels and the -100, "input_ids" (contains the splitted tokens), "token_type_ids", "attention_mask"
         """
         model_tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
         tokenized_inputs = model_tokenizer(statement["tokens"], truncation=True, is_split_into_words=True)
@@ -314,6 +361,17 @@ class HuggingFaceFramework(Framework):
     '''
 
     def _compute_metrics(self, p, label_list):
+        """
+        Compute the metrics for the finetuning evaluation
+        Adopted from the Token Classification Tutorial: https://huggingface.co/docs/transformers/tasks/token_classification
+
+        Parameters:
+        p (Tupel(List,List): Tupel contains the Predictions and the annoted labels
+        label_list (List[str]): List of all possible labels
+
+        Returns:
+        (dict): with "precision", "recall", "f1", "accuracy"
+        """
         seqeval = load("seqeval")
         predictions, labels = p
         predictions = np.argmax(predictions, axis=2)
@@ -337,5 +395,14 @@ class HuggingFaceFramework(Framework):
 
     # make this for all framework classes abstract
     def _convert_metrics(self, metrics, duration):
-        print(duration)
+        """
+        Converts the metrics to a TrainingResults Object
+
+        Parameters:
+        metrics (dict): from `_compute_metrics`
+        duration (float): measured finetuning duration
+
+        Returns
+        (TrainingResults)
+        """
         return TrainingResults(f1=metrics["eval_f1"], recall=metrics["eval_recall"], precision=metrics["eval_precision"], duration=duration, accuracy=metrics["eval_accuracy"])

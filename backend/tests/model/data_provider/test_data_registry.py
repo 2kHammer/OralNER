@@ -7,6 +7,12 @@ from app.model.data_provider.adg_row import ADGRow
 from app.model.data_provider.data_registry import data_registry, DataRegistry, TrainingData
 from app.utils.config import STORE_TEMP_PATH, TRAININGSDATA_PATH
 
+"""
+    Notes:
+        most test are only running in the specific test environment, especially all integration tests
+        they are using the datasets and models which are created in the model and data registry
+        this allows the interaction of different functions to be tested
+"""
 
 # -------------------------------------
 # init & helpers

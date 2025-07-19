@@ -1,18 +1,79 @@
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import pytest
+from datasets import Dataset
+
 from app.model.data_provider.data_registry import data_registry
 from app.model.ner_model_provider.model_registry import model_registry
 from app.model.framework_provider.huggingface_framework import HuggingFaceFramework
-from app.utils.config import BASE_MODELS_PATH
-
-hf = HuggingFaceFramework()
+from app.model.ner_model_provider.ner_model import TrainingResults
+from app.utils.config import BASE_MODELS_PATH, STORE_TEMP_PATH
+from tests.model.framework_provider.test_framework import run_pipeline_test
 
 path_tokenizer = BASE_MODELS_PATH + "/mschiesser_ner-bert-german"
 possible_entities = ["PER","ROLE","ORG","LOC","WORK_OF_ART","NORP","EVENT","DATE"]
 
-'''
-    Unit Tests
-'''
+"""
+    Notes:
+        most test are only running in the specific test environment, especially all integration tests
+        they are using the datasets and models which are created in the model and data registry
+        this allows the interaction of different functions to be tested
+"""
+# -------------------------------------
+# unit tests
+# -------------------------------------
+def test_load_model():
+    hf = HuggingFaceFramework()
+    with pytest.raises(TypeError):
+        hf.load_model('test')
+    #test false model
+    with pytest.raises(TypeError):
+        hf.load_model(model_registry.list_model(3))
+    with patch ("app.model.framework_provider.huggingface_framework.AutoModelForTokenClassification.from_pretrained", return_value=1), \
+        patch("app.model.framework_provider.huggingface_framework.AutoTokenizer.from_pretrained",return_value=1):
+        assert hf.model is None
+        assert hf.tokenizer is None
+        hf.load_model(model_registry.list_model(0))
+        assert hf.model is not None
+        assert hf.tokenizer is not None
 
-def check_if_entity_types_are_possible(dataset_id):
+def test_tokenize_align_labels():
+    hf = HuggingFaceFramework()
+    base_hf_model = model_registry.list_model(0)
+    test_statement = Dataset.from_list([{"tokens":["Alexander","Hammer","feiert","Weihnachten"],"labels":["B-PER","I-PER","O","B-EVENT"]}])
+    res =hf._tokenize_and_align_labels(test_statement, base_hf_model.storage_path)
+    # the labels should have the same length as the splitted tokens
+    assert len(res.labels[0]) == len(res.input_ids[0])
+    # first and last label should be -100
+    assert (res.labels[0][0] == -100) and (res.labels[0][-1] == -100)
+
+def test_convert_ner_results_adg_example():
+    hf = HuggingFaceFramework()
+    # this examples covers all edge cases of the function
+    test_labels = ['O', 'O', 'O', 'B-LOC', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'B-NORP', 'I-NORP', 'O', 'O', 'O', 'B-LOC', 'O']
+    test_tokens = ['Wir', 'kamen', 'aus', 'Norddeutschland', ',', 'wir', 'waren', 'mit', 'der', 'Eisenbahn', 'gefahren', ',', 'und', 'da', 'wollte', 'man', '...', 'Deutsche', ',', 'deutsche', 'Polizeikräfte', ',', 'keine', ',', 'keine', ',', 'keine', 'Franzosen', ',', 'auf', 'dem', 'Bahnhof', '...']
+    test_indexes = [0, 4, 10, 14, 29, 31, 35, 41, 45, 49, 59, 67, 69, 73, 76, 83, 87, 91, 99, 101, 110, 123, 125, 130, 132, 137, 139, 145, 154, 156, 160, 164, 172]
+    # manually moved the start of the first entity +1 -> from 14 to 15 (to cover all edge cases)
+    test_results = [[{'end': 18, 'entity': 'B-LOC', 'index': 4, 'score': 0.9981377, 'start': 14, 'word': 'Nord'}, {'end': 29, 'entity': 'B-LOC', 'index': 5, 'score': 0.9985862, 'start': 18, 'word': '##deutschland'}, {'end': 58, 'entity': 'B-ORG', 'index': 11, 'score': 0.9949338, 'start': 49, 'word': 'Eisenbahn'}]]
+    #result = hf.apply_ner([test_row.text])
+    tokens_res, labels_res, metrics = hf._convert_ner_results_adg(test_results, [SimpleNamespace(labels=test_labels, tokens=test_tokens, indexes=test_indexes)], None)
+    assert test_tokens == tokens_res[0]
+    ent1 = test_results[0][0]
+    startindex_bloc = 3
+    assert labels_res[0][startindex_bloc] == "B-LOC" and labels_res[0][startindex_bloc+1] != "B-LOC"
+    assert labels_res[0][9] == "B-ORG"
+
+# -------------------------------------
+# integration tests
+# -------------------------------------
+def test_ner_pipeline(training_data_id=3, model_id=0, size_test=50):
+    hf = HuggingFaceFramework()
+    run_pipeline_test(framework=hf,training_data_id=training_data_id, model_id=model_id, size_test=size_test)
+
+
+def test_check_if_entity_types_are_possible(dataset_id=4):
+    hf = HuggingFaceFramework()
     rows = data_registry.load_training_data(dataset_id)
     dataset, label_id = hf.prepare_training_data(rows,path_tokenizer)
     types = list(label_id.keys())
@@ -20,62 +81,58 @@ def check_if_entity_types_are_possible(dataset_id):
         if type != "O":
             assert type[2:] in possible_entities
 
-def test_entity_types():
-    for i in range(0,4):
-        check_if_entity_types_are_possible(i)
-
-def check_split_size(dataset_id=0, split_sentences=False):
-    rows = data_registry.load_training_data(dataset_id)
-    dataset, label_id = hf.prepare_training_data(rows, path_tokenizer, 0.8,0.2,split_sentences=split_sentences, seed=42)
-    len_ds = len(rows)
-    if split_sentences:
-        sentence_data = data_registry.split_training_data_sentences(rows)
-        len_ds = len(sentence_data)
-    train_size = dataset["train"].num_rows
-    vali_size = dataset["validation"].num_rows
-    assert (train_size  + vali_size) == len_ds
-    assert train_size/ len_ds >= 0.79 and train_size/ len_ds <= 0.91
-    assert vali_size/ len_ds >= 0.19 and vali_size/ len_ds <= 0.21
-
-def test_split_sizes():
-    for i in range(1,2):
-        check_split_size(i, True)
-
-
-
-def test_ner_results_adg(dataset_id=0, model_id=1, test_size=100):
-    hf.load_model(model_registry.list_model(model_id))
-    rows = data_registry.load_training_data(dataset_id)
-    rows = rows[100: 100+test_size]
-    texts = [row.text for row in rows]
-    ner_results = hf.apply_ner(texts)
-    tokens, predicted_labels, metrics  = hf.convert_ner_results(ner_results,rows)
-
-    for index, pred_labels in enumerate(predicted_labels):
-        assert len(pred_labels) == len(rows[index].tokens)
-
-    expected_metrics = {'f1', 'recall', 'precision', 'accuracy'}
-    assert expected_metrics.issubset(metrics.keys())
-
-def test_ner_pipeline_adg(dataset_id=3, model_id=1, test_size=100):
+def test_prepare_training_data(dataset_id=3, test_size = 100):
     hf = HuggingFaceFramework()
-    model = model_registry.list_model(model_id)
-    rows = data_registry.load_training_data(dataset_id)[100: 100+test_size]
-    tokens_row, labels_row, metrics_row =hf.process_ner_pipeline(model, rows)
-    tokens_sen, labels_sen, metrics_sen =hf.process_ner_pipeline(model, rows, True)
-    all_tokens_sen= [token for tokens in tokens_sen for token in tokens]
-    all_tokens_row = [token for tokens in tokens_row for token in tokens]
-    # check if the tokens are in the correct order
-    assert all_tokens_sen == all_tokens_row
-    expected_metrics = {'f1', 'recall', 'precision', 'accuracy'}
-    assert expected_metrics.issubset(metrics_row.keys())
-    assert expected_metrics.issubset(metrics_sen.keys())
+    rows = data_registry.load_training_data(dataset_id)[50:50+test_size]
+    dataset, label_id = hf.prepare_training_data(rows,path_tokenizer,seed=42)
+    tokens_row = [row.tokens for row in rows]
+    # check if sizes match
+    assert len(rows) == (len(dataset["train"]) + len(dataset["validation"]))
+    # check if every statement is in the dataset dict
+    for tokens_statement in tokens_row:
+        assert ((tokens_statement in dataset["train"]["tokens"]) or (tokens_statement in dataset["validation"]["tokens"]))
 
-    #test without adg
-    sentences = data_registry.split_training_data_sentences(rows)
-    sen_text = [sen.text for sen in sentences]
-    tokens_no_adg, labels_no_adg, _= hf.process_ner_pipeline(model, sen_text)
+def test_finetune_ner_model(model_id=0, dataset_id=3, test_size=30):
+    base_model = model_registry.list_model(model_id)
+    rows = data_registry.load_training_data(dataset_id)[50:50+test_size]
+    hf = HuggingFaceFramework()
+    data, data_dict =hf.prepare_training_data(rows,base_model.storage_path)
+    params = hf.default_finetuning_params
+    params["num_train_epochs"] = 1
+    modified_name = "FlairFastTest"
+    test_path = STORE_TEMP_PATH
+    metrics, args = hf.finetune_ner_model(base_model.storage_path,data, data_dict,modified_name,test_path,params)
+    # this tests _compute_metrics and _convert_metrics
+    assert isinstance(metrics, TrainingResults)
 
-'''
-    Integration Tests
-'''
+def test_convert_ner_results_not_adg_example(model_id=0,dataset_id =3, test_size=100):
+    hf = HuggingFaceFramework()
+    rows =data_registry.load_training_data(dataset_id)[120:120+test_size]
+    texts = [row.text for row in rows]
+    hf.load_model(model_registry.list_model(model_id))
+    ner_result = hf.apply_ner(texts)
+    tokens_res, labels_res, _ = hf.convert_ner_results(ner_result,texts)
+    for index, row in enumerate(rows):
+        tokens_tokenizer = hf.tokenizer(row.text).tokens()
+        len_tokens_without_subtokens = 0
+        for token in tokens_tokenizer:
+            if token[:2] != "##":
+                len_tokens_without_subtokens += 1
+        # check if the length is correct and all subtokens are mapped
+        assert len(tokens_res[index]) == (len_tokens_without_subtokens-2)
+
+    # check if the labels are correct mapped
+    # if only a subtoken is annoted and not the first token -> is ignored
+    for index_statement,labels in enumerate(labels_res):
+        entities = ner_result[index_statement]
+        token_labels = tokens_res[index_statement]
+        for index,label in enumerate(labels):
+            if label != "O":
+                token_with_entity = token_labels[index]
+                # remove the next subtokens from entities
+                while(len(entities)>0 and (entities[0]["word"][:2] == "##")):
+                    entities.pop(0)
+                entity_text = (entities.pop(0))["word"]
+                assert token_with_entity.startswith(entity_text)
+
+
