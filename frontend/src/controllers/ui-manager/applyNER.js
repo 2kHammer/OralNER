@@ -1,14 +1,19 @@
 import { applyNERText, applyNERFile, getNERResults } from "../../services/api.js";
 
 const colors = [
-  "#e6194b", // Rot
-  "#3cb44b", // Grün
-  "#ffe119", // Gelb
-  "#0082c8", // Blau
-  "#f58231", // Orange
-  "#911eb4", // Violett
-  "#46f0f0", // Türkis
-  "#f032e6"  // Pink
+  "#e6194b", // red
+  "#3cb44b", // green
+  "#ffe119", // yellow
+  "#0082c8", // blue
+  "#f58231", // orange
+  "#911eb4", // violet 
+  "#46f0f0", // turquoise
+  "#f032e6",  // pink
+  // only 8 possible entity types, rest is ssubstitue
+  "#d2f53c", // lime green
+  "#fabebe", // light pink
+  "#008080", // dark turquoise
+  "#e6beff"  // light violet
 ];
 
 let buttonApplyNER = document.getElementById("buttonApplyNER")
@@ -26,7 +31,7 @@ let tokens = undefined
 let labels = undefined
 
 let timerApplyNER = undefined
-let intervallDuration = 1 * 1000;
+let intervallDuration = 3 * 1000;
 
 //check if text is in textarea
 textarea.addEventListener('input', () =>{
@@ -84,24 +89,20 @@ function visualizeEntities(tokens, labels){
 }
 
 function createEntityLegend(entityToColor, documentLegend){
-    documentLegend.innerHTML = "Legende:"
+    documentLegend.innerHTML = "Legende:";
+    documentLegend.classList.add("legend")
+
     for(const [label, color] of Object.entries(entityToColor)){
-        let li = document.createElement("li");
-        li.style.display = "flex";
-        li.style.alignItems = "center";
-        li.style.marginBottom = "5px";
+        let li = document.createElement("div");
+        li.classList.add("legend-element")
 
         let colorBox = document.createElement("span");
-        colorBox.style.display = "inline-block";
-        colorBox.style.width = "20px";
-        colorBox.style.height = "20px";
-        colorBox.style.marginRight = "8px";
-        colorBox.style.borderRadius = "3px";
+        colorBox.classList.add("legend-element-color")
         colorBox.style.backgroundColor = color;
 
-        li.appendChild(colorBox)
-        li.appendChild(document.createTextNode(label))
-        documentLegend.appendChild(li)
+        li.appendChild(colorBox);
+        li.appendChild(document.createTextNode(label));
+        documentLegend.appendChild(li);
     }
 }
 
@@ -253,6 +254,7 @@ function handleNERResultsText(state, res){
         disEnableApplyNERText(false);
     } else if (state == false) {
         applyNERTextStatus.textContent = "NER wird durchgeführt"
+        applyNERTextStatus.style.color ="red"
         reset = false;
     } else {
         applyNERTextStatus.textContent = "Fehlerhafte JobId"

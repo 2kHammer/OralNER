@@ -1,5 +1,19 @@
-const API_BASE_URL = 'http://127.0.0.1:5000'
-//const API_BASE_URL = 'http://192.168.178.182:5000'
+//default backend url
+let API_BASE_URL = 'http://127.0.0.1:5000'
+
+//get backend url
+async function loadConfig(){
+    let res = await fetch("/config/config.json")
+    if(res.ok){
+        let conf = await res.json();
+        API_BASE_URL = conf.backendURL
+        console.log(conf.backendURL)
+    } else{
+        console.log("Couldn't load config, use defeault url: "+API_BASE_URL)
+    }
+}
+
+await loadConfig();
 
 export async function getModels(){
     const res = await fetch(`${API_BASE_URL}/models`)
@@ -20,11 +34,18 @@ export async function getModel(id){
 }
 
 export async function getActiveModel() {
-    const res = await fetch(`${API_BASE_URL}/models/active`)
-    if(res.ok){
-        return await res.json()
-    } else {
-        return undefined
+    //needs try and catch because this function checks if the backend is available
+    try{
+        const res = await fetch(`${API_BASE_URL}/models/active`)
+        console.log(res)
+        if(res.ok){
+            return await res.json()
+        } else {
+            return undefined
+        }
+    }
+    catch(error){
+        return undefined;
     }
 }
 

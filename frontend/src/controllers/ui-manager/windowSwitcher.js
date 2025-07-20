@@ -39,12 +39,12 @@ async function initHome(){
 window.switchWindow = switchWindow
 
 //test if server is available
-try{
-  await getActiveModel();
-  
+let test = await getActiveModel();
+console.log(test)
+if (test != undefined){
   //first init Home, if no error in server connection
   initHome();
-} catch(exception){
+} else {
   await switchWindow("noserver")
 }
   

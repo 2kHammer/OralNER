@@ -66,7 +66,7 @@ class DataRegistry:
         trainingsdata_id (int): the id of the training dataset
 
         Returns:
-        List[ADGRow]: if the `trainingsdata_id` is existent
+        (List[ADGRow]): if the `trainingsdata_id` is existent
         """
         index = self._get_index_trainingsdata_id(trainingsdata_id)
         if index is None:
@@ -80,7 +80,7 @@ class DataRegistry:
         Returns the metadata of all datasets
 
         Returns:
-        List[TrainingData]
+        (List[TrainingData])
         """
         return self._datasets
 
@@ -92,7 +92,7 @@ class DataRegistry:
         data_to_process (file): csv-file in the ADG-Format
 
         Returns:
-        List[ADGRow]
+        (List[ADGRow])
         """
         return self._read_convert_adg_file(data_to_process)
 
@@ -104,7 +104,7 @@ class DataRegistry:
         data_to_process (str)
 
         Return:
-        List[str]
+        (List[str])
         """
         return self._simple_split_sentences(data_to_process)[0]
 
@@ -155,7 +155,7 @@ class DataRegistry:
         filename_json (str): name of the json file
 
         Returns
-        (boolean)
+        (bool)
         """
         adg_rows = self._read_convert_adg_file(file)
         if adg_rows is not None:
@@ -226,7 +226,7 @@ class DataRegistry:
         steps (int): every `steps` lines are checked
 
         Returns
-        (boolean)
+        (bool)
         """
         one_line_checked = False
         try:

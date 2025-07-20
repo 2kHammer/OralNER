@@ -68,7 +68,7 @@ class ModelRegistry:
         id (int)
 
         Returns
-        (boolean): true if successful, else false
+        (bool): true if successful, else false
         """
         index_model = self._get_index_model_id(id)
         if index_model is not None:
@@ -107,7 +107,7 @@ class ModelRegistry:
         trainings_args (dict):
 
         Returns
-        (boolean): if the adding was successful
+        (bool): if the adding was successful
         """
         index_model = self._get_index_model_id(id)
         if index_model is not None:

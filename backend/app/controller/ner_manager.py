@@ -12,6 +12,17 @@ ner_jobs = {}
 lock = threading.Lock()
 
 def start_ner(content, with_file, use_sentences=False):
+    """
+    Starts the NER-job with ´ner_worker()´ and save the job-id in ´ner_jobs´
+
+    Parameters
+    content (List[str] | str): the content on which NER should be applied
+    with_file (bool): should NER be applied on an adg-file, is set from app_router.apply_ner
+    use_sentences: if it should be applied on an adg-file, should the statements be split into sentences
+
+    Returns
+    (str): the job id
+    """
     framework_name = model_registry.current_model.framework_name
     framework = None
     if framework_name.name == 'HUGGINGFACE':
@@ -36,6 +47,15 @@ def start_ner(content, with_file, use_sentences=False):
     return job_id
 
 def get_ner_results(job_id):
+    """
+    Check the status of a NER job.
+
+    Parameters:
+    job_id (str): the job id of the job to check
+
+    Returns:
+    (List[List,List,dict] | str | None): Return the tokens,labels and metrics if the job is finished, the error message if an error occured, or None if it is not finished
+    """
     with lock:
         if job_id in ner_jobs:
             ner_result = ner_jobs[job_id]
@@ -53,6 +73,7 @@ def finetune_ner(model_id, dataset_id, new_model_name, split_sentences):
     modified_model = model_registry.create_modified_model(new_model_name, base_model)
     modified_model_id = model_registry.add_model(modified_model)
 
+    # überlegen was bei einen Fehler machen
     def worker():
         framework = None
         if base_model.framework_name.name == 'HUGGINGFACE':
@@ -73,14 +94,30 @@ def finetune_ner(model_id, dataset_id, new_model_name, split_sentences):
     return modified_model_id
 
 def _ner_worker(job_id,framework, model, content, with_file, use_sentences):
-    ner_input = None
-    sentences = None
-    if with_file:
-        ner_input = data_registry.prepare_data_with_labels(content)
-        if use_sentences:
-            sentences = data_registry.split_training_data_sentences(ner_input)
-    else:
-        ner_input = data_registry.prepare_data_without_labels(content)
-    tokens, labels, metrics = framework.process_ner_pipeline(model, ner_input, sentences)
-    with lock:
-        ner_jobs[job_id] = [tokens, labels, metrics]
+    """
+    Applies NER in a separate thread
+
+    Parameter:
+    job_id (str): the results should be saved underneath
+    framework (Framework): a derived Framework object
+    model (NERModel): on which NER should be applied
+    content (List[str] | str): the content on which NER should be applied
+    with_file (bool):
+    use_sentences (bool):
+    """
+    try:
+        ner_input = None
+        sentences = None
+        if with_file:
+            ner_input = data_registry.prepare_data_with_labels(content)
+            if use_sentences:
+                sentences = data_registry.split_training_data_sentences(ner_input)
+        else:
+            ner_input = data_registry.prepare_data_without_labels(content)
+        tokens, labels, metrics = framework.process_ner_pipeline(model, ner_input, sentences)
+        with lock:
+            ner_jobs[job_id] = [tokens, labels, metrics]
+    except Exception as e:
+        with lock:
+            ner_jobs[job_id] = str(e)
+

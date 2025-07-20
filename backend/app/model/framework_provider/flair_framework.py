@@ -9,6 +9,7 @@ from flair.trainers import ModelTrainer
 from app.model.data_provider.adg_row import ADGRow
 from app.model.data_provider.data_registry import data_registry
 from app.model.framework_provider.framework import Framework, FrameworkNames
+from app.model.framework_provider.framework_utils import type_check_process_ner_pipeline
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.config import CONLL_PATH
 
@@ -53,14 +54,7 @@ class FlairFramework(Framework):
         """
         Processing the ner pipeline. For further documentation see `framework.py`
         """
-        if not isinstance(ner_content, list):
-            if not isinstance(ner_content[0], str) or not isinstance(ner_content[0], ADGRow):
-                raise TypeError("Excepts a list of strings or ADGRows")
-        if not isinstance(model, NERModel):
-            raise TypeError("Expects an object of type NERModel")
-        if model.framework_name != FrameworkNames.FLAIR:
-            raise ValueError("Expects an model for Flair")
-
+        type_check_process_ner_pipeline(model, ner_content, FrameworkNames.FLAIR)
 
         self.load_model(model)
         results = None

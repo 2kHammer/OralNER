@@ -77,6 +77,8 @@ def get_ner_job_result(job_id):
         result = ner_manager.get_ner_results(job_id)
         if result is None:
             return jsonify({"status": "processing"}), 202
+        elif isinstance(result, str):
+            return jsonify({"error": result}), 500
         else:
             if result[2] == None:
                 result = result[0:2]
