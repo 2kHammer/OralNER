@@ -6,6 +6,7 @@ class ModelState(Enum):
     BASE = 1
     MODIFIED =2
     IN_TRAINING = 3
+    ERROR = 4
 
 @dataclass
 class TrainingResults:
@@ -56,7 +57,7 @@ class NERModel:
         """
         Sets the state of the NER Model with a number matching to `FrameworkNames
         """
-        if 0 < state < 4:
+        if 0 < state < 5:
             self.state = ModelState(state)
         else:
             raise ValueError("Invalid state")

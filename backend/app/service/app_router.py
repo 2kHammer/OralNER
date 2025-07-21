@@ -6,23 +6,45 @@ api = Blueprint('api', __name__)
 
 @api.route('/models', methods=['GET'])
 def get_models():
+    """
+    Returns the model metadata.
+
+    Returns:
+    (JSON Response): 200 with models metadata
+    """
     try:
-        return jsonify(model_manager.get_models()),200
+        test = model_manager.get_models()
+        return jsonify(test),200
     except Exception as e:
         abort(500, description="Internal Server Error: " + str(e))
 
 @api.route('/models/<int:id>', methods=['GET'])
 def get_model(id):
+    """
+    Returns the model metadata
+
+    Parameters
+    id (int): id of the model which should be returned
+
+    Returns
+    (JSON Response): 200: with model metadata, 404: if the model doesn't exist
+    """
     try:
         model = model_manager.get_model(id)
         if model is None:
-            abort(404, description="Model not found")
+            return jsonify({"error":"Model not found"}), 404
         return jsonify(model), 200
     except Exception as e:
         abort(500, description="Internal Server Error: " + str(e))
 
 @api.route('/models/active', methods=['GET'])
 def get_model_active():
+    """
+    Return the model metadata of the active model
+
+    Returns
+    (JSON Response): 200: with model metadata
+    """
     try:
         model = model_manager.get_model_active()
         return jsonify(model), 200
@@ -31,17 +53,32 @@ def get_model_active():
 
 @api.route('/models/active/<int:id>', methods=['PUT'])
 def set_model_active(id):
+    """
+    Sets the model with `id` as active
+
+    Parameters
+    id (int)
+
+    Returns
+    (JSON Response): 204 if the active model was changed, 404 if the model with id dosn't exist
+    """
     try:
         if model_manager.set_model_active(id):
             return '',204
         else:
-            abort(404, description="Model not found")
+            return jsonify({"error":"Model not found"}), 404
     except Exception as e:
         abort(500, description="Internal Server Error: " + str(e))
 
 
 @api.route('/trainingdata', methods=['GET'])
 def get_training_data():
+    """
+    Returns the training data metadata
+
+    Returns
+    (JSON Response): 200: with training data metadata
+    """
     try:
         return jsonify(data_manager.get_training_data()), 200
     except Exception as e:
@@ -49,6 +86,12 @@ def get_training_data():
 
 @api.route('/ner', methods=['POST'])
 def apply_ner():
+    """
+    Starts a NER-job on text or a file
+
+    Returns
+    (JSON Response): 200: with the job id, 400: if parameters are missing, 422: if the ner job couldn't be started
+    """
     try:
         if request.is_json:
             data = request.get_json()
@@ -73,6 +116,15 @@ def apply_ner():
 
 @api.route('/ner/<string:job_id>', methods=['GET'])
 def get_ner_job_result(job_id):
+    """
+    Returns the status or the result of the ner-job with `job_id`
+
+    Parameters
+    (job_id): str
+
+    Returns
+    (JSON Response): 202: if the job is running, 404: if the job doesn't exist, 200: if the job is done
+    """
     try:
         result = ner_manager.get_ner_results(job_id)
         if result is None:
@@ -91,6 +143,12 @@ def get_ner_job_result(job_id):
 
 @api.route('/ner/finetune', methods=['POST'])
 def finetune():
+    """
+    Starts the finetuning of a NER-job
+
+    Returns
+    (JSON Response): 202: with the id of the modified model, 400 if the parameters do not fit
+    """
     try:
         if request.is_json:
             data = request.get_json()
@@ -103,11 +161,19 @@ def finetune():
                 return jsonify({'error': 'No valid model_id or dataset_id or parameters provided'}), 400
             model_id = ner_manager.finetune_ner(model_id, dataset_id, name, split_sentences)
             return jsonify({"modified_model_id": model_id}), 202
+        else:
+            return jsonify({'error': 'No valid parameters provided'}), 400
     except Exception as e:
         abort(500, description="Internal Server Error: " + str(e))
 
 @api.route('/trainingdata', methods=['POST'])
 def add_trainingsdata():
+    """
+    Uploads a training data set
+
+    Returns
+    (JSON Response): 201: if the upload was successfull, 422: if the file is not in the correct format, 400: if no file is provided
+    """
     try:
         if "file" in request.files:
             file = request.files["file"]

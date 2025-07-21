@@ -5,6 +5,7 @@ from transformers import AutoTokenizer, AutoModel, AutoModelForTokenClassificati
 
 from app.model.ner_model_provider.model_registry import model_registry
 from app.utils.config import STORE_PATH, TRAININGSDATA_PATH, DEFAULT_TOKENIZER_PATH, BASE_MODELS_PATH
+from app.utils.load_models import init_store_models
 from service.app_router import api
 
 from app.model.framework_provider.framework import FrameworkNames
@@ -77,6 +78,7 @@ def run_test():
 #model.save_pretrained(path_to_save + model_name_save)
 
 if __name__ == '__main__':
+    init_store_models()
     app = Flask(__name__)
     app.register_blueprint(api)
     CORS(app)

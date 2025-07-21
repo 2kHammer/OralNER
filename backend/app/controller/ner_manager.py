@@ -68,27 +68,22 @@ def get_ner_results(job_id):
 
 
 def finetune_ner(model_id, dataset_id, new_model_name, split_sentences):
+    """
+    Finetunes the model with `model_id` with the dataset with `dataset_id`
+
+    Parameters:
+    model_id (int): the id of the model to finetune
+    dataset_id (int): the id of the dataset to finetune
+    new_model_name (str): the name of the new model
+    split_sentences (bool): whether to split sentences into training and test sets
+    """
     base_model = model_registry.list_model(model_id)
 
     modified_model = model_registry.create_modified_model(new_model_name, base_model)
     modified_model_id = model_registry.add_model(modified_model)
 
-    # überlegen was bei einen Fehler machen
-    def worker():
-        framework = None
-        if base_model.framework_name.name == 'HUGGINGFACE':
-            framework = HuggingFaceFramework()
-        elif base_model.framework_name.name == 'FLAIR':
-            framework = FlairFramework()
-        elif base_model.framework_name.name == 'SPACY':
-            framework = SpacyFramework()
-        training_dataset_rows = data_registry.load_training_data(dataset_id)
-        data, label_id = framework.prepare_training_data(training_dataset_rows,base_model.storage_path, split_sentences=split_sentences)
-        results, args = framework.finetune_ner_model(base_model.storage_path,data,label_id,new_model_name,modified_model.storage_path)
-        args['split_sentences'] = split_sentences
-        model_registry.add_training(modified_model_id, data_registry.get_training_data_name(dataset_id), dataset_id, results, args)
 
-    thread = Thread(target=worker)
+    thread = Thread(target=_finetune_worker, args=(base_model,dataset_id,modified_model, split_sentences))
     thread.start()
 
     return modified_model_id
@@ -121,3 +116,30 @@ def _ner_worker(job_id,framework, model, content, with_file, use_sentences):
         with lock:
             ner_jobs[job_id] = str(e)
 
+def _finetune_worker(base_model, dataset_id, modified_model, split_sentences):
+    """
+    Finetunes the `base_model` in an separate thread
+
+    Parameters:
+    base_model (NERModel): the model to finetune
+    dataset_id (int): the id of the dataset to finetune
+    modified_model (NERModel): the modified model, which will be finetuned
+    split_sentences (bool)
+    """
+    try:
+        new_model_name = modified_model.name
+        modified_model_id = modified_model.id
+        framework = None
+        if base_model.framework_name.name == 'HUGGINGFACE':
+            framework = HuggingFaceFramework()
+        elif base_model.framework_name.name == 'FLAIR':
+            framework = FlairFramework()
+        elif base_model.framework_name.name == 'SPACY':
+            framework = SpacyFramework()
+        training_dataset_rows = data_registry.load_training_data(dataset_id)
+        data, label_id = framework.prepare_training_data(training_dataset_rows,base_model.storage_path, split_sentences=split_sentences)
+        results, args = framework.finetune_ner_model(base_model.storage_path,data,label_id,new_model_name,modified_model.storage_path)
+        args['split_sentences'] = split_sentences
+        model_registry.add_training(modified_model_id, data_registry.get_training_data_name(dataset_id), dataset_id, results, args)
+    except Exception as e:
+        model_registry.abort_finetuning(modified_model.id)

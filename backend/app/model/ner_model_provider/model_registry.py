@@ -136,6 +136,26 @@ class ModelRegistry:
         else:
             return None
 
+    def abort_finetuning(self, id):
+        """
+        In the finetuning occured an error
+
+        Parameters
+        id (int): id of the model where the finetuning was aborted
+
+        Returns
+        (bool)
+        """
+        index_model = self._get_index_model_id(id)
+        if index_model is not None:
+            model = self._models[index_model]
+            model.set_state(4)
+            self._udpate_metadata()
+            return True
+        else:
+            return False
+
+
     # -------------------------------------
     # private functions
     # -------------------------------------
