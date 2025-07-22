@@ -29,7 +29,7 @@ from tests.model.framework_provider.test_framework import run_pipeline_test
 def create_get_dummy_model(model_id):
     dummy = model_registry.list_model(model_id)
     if dummy == None:
-        new_model_id = model_registry.add_model(NERModel(1, "SpacyDummy",FrameworkNames.SPACY,"de_core_new_sm",BASE_MODELS_PATH+"/NLP/de_core_news_sm"))
+        new_model_id = model_registry.add_model(NERModel(1, "SpacyDummy",FrameworkNames.SPACY,"de_core_new_sm",BASE_MODELS_PATH+"/de_core_news_sm"))
         return new_model_id
     else:
         return model_id
@@ -155,7 +155,7 @@ def test_prepare_training_data(training_data_id=2, model_id = 8):
     assert len(sentences_text) == (len(train_texts) + len(valid_texts))
 
 
-def test_finetune(base_model_id=5, dataset_size=100):
+def test_finetune(base_model_id=7, dataset_size=100):
     # test a very fast finetune
     base_model = model_registry.list_model(base_model_id)
     modified_model =model_registry.create_modified_model("TestSpacy",base_model)

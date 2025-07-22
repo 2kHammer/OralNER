@@ -8,6 +8,9 @@ let datasetUploadStatusLabel = document.getElementById("datasetUploadStatusLabel
 let datasetName = ""
 let fileIsThere = false;
 
+/**
+ * Disables/enables the `datasetUploadButton` depending on the dataset name and the uploaded file
+ */
 function checkSetButtonActive(){
     if ((datasetName.length > 0)&& fileIsThere){
         datasetUploadButton.disabled = false;
@@ -16,6 +19,10 @@ function checkSetButtonActive(){
     }
 }
 
+/**
+ * Resets the upload dataset form
+ * @param {bool} withLabel - should the `datasetUploadStatusLabel` also be reset 
+ */
 export function resetUploadDataset(withLabel=true){
     fileIsThere = true;
     datasetUploadForm.reset();
@@ -24,17 +31,28 @@ export function resetUploadDataset(withLabel=true){
     }
 }
 
+/**
+ * Dis/enable the file input, the dataset name input and the upload button
+ * @param {boolean} disable 
+ */
 function disableEnableForm(disable){
      datasetFileInput.disabled = disable;
     datasetNameInput.disabled = disable;
     datasetUploadButton.disabled=disable;
 }
 
+
+/*
+ * Event Listeners and applied functions 
+ */
+
+// Handling of the dataset name input
 datasetNameInput.addEventListener('input', (event)=>{
     datasetName = datasetNameInput.value;
     checkSetButtonActive();
 })
 
+// Handling of the file input
 datasetFileInput.addEventListener('input', (event)=>{
     let file = datasetFileInput.files[0];
     if (file){
@@ -49,6 +67,7 @@ datasetFileInput.addEventListener('input', (event)=>{
     checkSetButtonActive();
 })
 
+// Handling of upload Button
 datasetUploadButton.addEventListener("click", async () =>{
     datasetUploadStatusLabel.textContent = "Hochladen begonnen";
     disableEnableForm(true);

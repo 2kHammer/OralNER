@@ -33,33 +33,12 @@ let labels = undefined
 let timerApplyNER = undefined
 let intervallDuration = 3 * 1000;
 
-//check if text is in textarea
-textarea.addEventListener('input', () =>{
-    if (textarea.innerText.trim().length >0){
-        buttonApplyNER.disabled = false;
-    } else{
-        buttonApplyNER.disabled = true;
-    }
-})
 
-buttonApplyNER.onclick = async () =>{
-    if (!localStorage.getItem("job_id")){
-        let jobId = await applyNERText(textarea.innerText)
-        if (jobId == undefined){
-            applyNERTextStatus.textContent = "Fehler beim Starten von NER"
-        } else{
-            //reset Results from file
-            labelNERState.innerHTML = ""
-
-            localStorage.setItem("job_id",jobId)
-            localStorage.setItem("labels",false)
-            startApplyNERInterval(false);
-            disEnableApplyNERText(true);
-        }
-    }
-
-}
-
+/**
+ * Visualize the extracted entities in the text field `textarea`
+ * @param {string[]} tokens 
+ * @param {string[]} labels 
+ */
 function visualizeEntities(tokens, labels){
     let entityToColor = {}
     let colorIndex = 0
@@ -88,6 +67,11 @@ function visualizeEntities(tokens, labels){
     createEntityLegend(entityToColor, entityLegend)
 }
 
+/**
+ * Creates the legend that shows, which color stands for which entity type
+ * @param {Object} entityToColor - with the entity types as proberties and the related colors
+ * @param {HTMLElement} documentLegend - elem which should show the legend
+ */
 function createEntityLegend(entityToColor, documentLegend){
     documentLegend.innerHTML = "Legende:";
     documentLegend.classList.add("legend")
@@ -106,13 +90,193 @@ function createEntityLegend(entityToColor, documentLegend){
     }
 }
 
+/**
+ * Resets the legend and the textfield (`textarea`)
+ */
 function resetVisualizingEntities(){
     entityLegend.innerHTML = "";
     textarea.innerHTML = "";
 }
 
+/**
+ * Dis/enables the html elements for applying NER to a file
+ * @param {boolean} disable 
+ */
+function disEnableApplyNERFile(disable){
+    buttonExportsResults.disabled = disable;
+    buttonUploadNERFile.disabled = disable;
+    textarea.contentEditable = "false";
+    if (disable == false){
+        textarea.contentEditable = "true"
+        //only enable if text is in textartea
+        if (textarea.innerHTML != ""){
+            buttonApplyNER.disabled = disable;
+        }
+    } else {
+        textarea.contentEditable = "false"
+        buttonApplyNER.disabled = disable;
+    }
+}
 
-//listener if file is uploaded
+/**
+ * Dis/enables the html elements for applying NER to text in `textarea`
+ * @param {boolean} disable 
+ */
+function disEnableApplyNERText(disable){
+    let elements = upload.elements;
+    buttonApplyNER.disabled = disable;
+    for (let i = 0; i < elements.length; i++){
+        if((elements[i] == buttonExportsResults) && !disable){
+            console.log(tokens)
+            if (tokens != undefined && labels != undefined){
+                elements[i].disabled = disable;
+            } 
+        } else{
+            //disable or enable all elements
+            elements[i].disabled = disable;
+        }
+    }
+}
+
+/**
+ * Creating the export file if NER has been applied to a file
+ */
+function createExportFile(){
+    let exportFile = ""
+    for(let i =0; i < tokens.length; i++){
+        for(let u =0; u < tokens[i].length; u++){
+            exportFile += `${tokens[i][u]}\t${labels[i][u]}\n`;
+        }
+    }
+    const blob = new Blob([exportFile], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ner_output.txt'; 
+    document.body.appendChild(a);  
+    a.click();
+    document.body.removeChild(a); 
+    URL.revokeObjectURL(url);
+    upload.reset();
+    tokens = undefined
+    labels = undefined
+    buttonExportsResults.disabled = true;
+}
+
+/**
+ * Starts the intevall for checking if NER is finished
+ * @param {boolean} withLabels - true if NER was applied on a file, else false
+ */
+async function startApplyNERInterval(withLabels){
+    timerApplyNER = setInterval(async ()=> {
+                let reset = await checkNERResults(withLabels);
+                if (reset){
+                    clearInterval(timerApplyNER);
+                    localStorage.removeItem("job_id")
+                }
+            }, intervallDuration)
+}
+
+/**
+ * Check if the NER-Job is finished and the resuls are available
+ * @param {boolean} withLabels - true if NER was applied on a file, else false
+ * @returns {boolean} - true: if the job is finished (whether successful or not), else false 
+ */
+async function checkNERResults(withLabels){ 
+    let jobId = localStorage.getItem("job_id")
+    let reset = false;
+    if (jobId){
+        let res = await getNERResults(jobId)
+        let state = res["state"]
+        if(withLabels){
+            reset = handleNERResultsFile(state,res)
+        } else {
+            reset = handleNERResultsText(state, res);
+        }
+    return reset;
+    } else {
+        console.error("No JobId")
+    }
+}
+
+/**
+ * Is responsible for displaying the respective status of the NER execution on a file
+ * @param {boolean} state - is the NER-job finished
+ * @param {{state: boolean, result: {string[],string[],object}}} res - the ner results from the backend
+ * @returns {boolean} - true: if the job is finished (whether successful or not), else false 
+ */
+function handleNERResultsFile(state, res){
+    let reset = true;
+    if(state){
+        let result = res["result"][2]
+        labelNERState.innerHTML = `NER abgeschlossen - F1: ${result["f1"]}, Precision: ${result["precision"]}, Recall: ${result["recall"]}, Genauigkeit: ${result["accuracy"]}`;
+        labelNERState.style.color = "green"
+        tokens = res["result"][0];
+        labels = res["result"][1];
+        buttonExportsResults.disabled = false;
+        disEnableApplyNERFile(false);
+    } else if (state == false){
+        labelNERState.innerHTML = "NER wird durchgeführt"
+        labelNERState.style.color = "red"
+        reset = false;
+    } else{
+        labelNERState.innerHTML = "Fehlerhafte JobId"
+        disEnableApplyNERFile(false);
+    }
+    return reset;
+}
+
+/**
+ * Is responsible for displaying the respective status of the NER execution on text
+ * @param {boolean} state - is the NER-job finished
+ * @param {{state: boolean, result: {string[],string[],object}}} res - the ner results from the backend
+ * @returns {boolean} - - true: if the job is finished (whether successful or not), else false 
+ */
+function handleNERResultsText(state, res){
+    let reset = true;
+    if (state == true){
+        let result = res["result"]
+        visualizeEntities(result[0], result[1])
+        applyNERTextStatus.textContent = "";
+        disEnableApplyNERText(false);
+    } else if (state == false) {
+        applyNERTextStatus.textContent = "NER wird durchgeführt"
+        applyNERTextStatus.style.color ="red"
+        reset = false;
+    } else {
+        applyNERTextStatus.textContent = "Fehlerhafte JobId"
+        disEnableApplyNERText(false);
+    }
+    return reset;
+}
+
+/**
+ * Checks after reload if a NER-job is running, displays the corresponging elements
+ */
+async function checkIfNerIsRunning() {
+    let jobId = localStorage.getItem("job_id")
+    if (jobId){
+        let labels = localStorage.getItem("labels")
+        if (labels == "false"){
+            startApplyNERInterval(false)
+            disEnableApplyNERText(true);
+        } else {
+            startApplyNERInterval(true)
+            disEnableApplyNERFile(true)
+        }
+    }
+    
+}
+
+
+/*
+ * Event Listeners and applied functions 
+ */
+
+/*
+ * handles the upload for a file and starting the NER-job on it
+ */
 upload.addEventListener('submit', async(e) => {
     e.preventDefault();
     const file = input.files[0];
@@ -143,141 +307,40 @@ upload.addEventListener('submit', async(e) => {
         }
 })
 
-function disEnableApplyNERFile(disable){
-    buttonExportsResults.disabled = disable;
-    buttonUploadNERFile.disabled = disable;
-    textarea.contentEditable = "false";
-    if (disable == false){
-        textarea.contentEditable = "true"
-        //only enable if text is in textartea
-        if (textarea.innerHTML != ""){
-            buttonApplyNER.disabled = disable;
-        }
-    } else {
-        textarea.contentEditable = "false"
-        buttonApplyNER.disabled = disable;
-    }
-}
-
-function disEnableApplyNERText(disable){
-    let elements = upload.elements;
-    buttonApplyNER.disabled = disable;
-    for (let i = 0; i < elements.length; i++){
-        if((elements[i] == buttonExportsResults) && !disable){
-            console.log(tokens)
-            if (tokens != undefined && labels != undefined){
-                elements[i].disabled = disable;
-            } 
-        } else{
-            //disable or enable all elements
-            elements[i].disabled = disable;
-        }
-    }
-}
-
-function createExportFile(){
-    let exportFile = ""
-    for(let i =0; i < tokens.length; i++){
-        for(let u =0; u < tokens[i].length; u++){
-            exportFile += `${tokens[i][u]}\t${labels[i][u]}\n`;
-        }
-    }
-    const blob = new Blob([exportFile], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ner_output.txt'; 
-    document.body.appendChild(a);  
-    a.click();
-    document.body.removeChild(a); 
-    URL.revokeObjectURL(url);
-    upload.reset();
-    tokens = undefined
-    labels = undefined
-    buttonExportsResults.disabled = true;
-}
-
-async function startApplyNERInterval(withLabels){
-    timerApplyNER = setInterval(async ()=> {
-                let reset = await checkNERResults(withLabels);
-                if (reset){
-                    clearInterval(timerApplyNER);
-                    localStorage.removeItem("job_id")
-                }
-            }, intervallDuration)
-}
-async function checkNERResults(withLabels){ 
-    let jobId = localStorage.getItem("job_id")
-    let reset = false;
-    if (jobId){
-        let res = await getNERResults(jobId)
-        let state = res["state"]
-        if(withLabels){
-            reset = handleNERResultsFile(state,res)
-        } else {
-            reset = handleNERResultsText(state, res);
-        }
-    return reset;
-    } else {
-        console.error("No JobId")
-    }
-}
-
-function handleNERResultsFile(state, res){
-    let reset = true;
-    if(state){
-        let result = res["result"][2]
-        labelNERState.innerHTML = `NER abgeschlossen - F1: ${result["f1"]}, Precision: ${result["precision"]}, Recall: ${result["recall"]}, Genauigkeit: ${result["accuracy"]}`;
-        labelNERState.style.color = "green"
-        tokens = res["result"][0];
-        labels = res["result"][1];
-        buttonExportsResults.disabled = false;
-        disEnableApplyNERFile(false);
-    } else if (state == false){
-        labelNERState.innerHTML = "NER wird durchgeführt"
-        labelNERState.style.color = "red"
-        reset = false;
+/*
+ * activates/deactivates the button depending on whether there is text in the input field
+ */
+textarea.addEventListener('input', () =>{
+    if (textarea.innerText.trim().length >0){
+        buttonApplyNER.disabled = false;
     } else{
-        labelNERState.innerHTML = "Fehlerhafte JobId"
-        disEnableApplyNERFile(false);
+        buttonApplyNER.disabled = true;
     }
-    return reset;
-}
+})
 
-function handleNERResultsText(state, res){
-    let reset = true;
-    if (state == true){
-        let result = res["result"]
-        visualizeEntities(result[0], result[1])
-        applyNERTextStatus.textContent = "";
-        disEnableApplyNERText(false);
-    } else if (state == false) {
-        applyNERTextStatus.textContent = "NER wird durchgeführt"
-        applyNERTextStatus.style.color ="red"
-        reset = false;
-    } else {
-        applyNERTextStatus.textContent = "Fehlerhafte JobId"
-        disEnableApplyNERText(false);
-    }
-    return reset;
-}
+/*
+ * handles and start the NER-job for text
+ */
+buttonApplyNER.onclick = async () =>{
+    if (!localStorage.getItem("job_id")){
+        let jobId = await applyNERText(textarea.innerText)
+        if (jobId == undefined){
+            applyNERTextStatus.textContent = "Fehler beim Starten von NER"
+        } else{
+            //reset Results from file
+            labelNERState.innerHTML = ""
 
-async function checkIfNerIsRunning() {
-    let jobId = localStorage.getItem("job_id")
-    if (jobId){
-        let labels = localStorage.getItem("labels")
-        if (labels == "false"){
-            startApplyNERInterval(false)
+            localStorage.setItem("job_id",jobId)
+            localStorage.setItem("labels",false)
+            startApplyNERInterval(false);
             disEnableApplyNERText(true);
-        } else {
-            startApplyNERInterval(true)
-            disEnableApplyNERFile(true)
         }
     }
-    
 }
+
 
 buttonExportsResults.onclick = createExportFile
+
+//check if NER is running after reload
 checkIfNerIsRunning();
 

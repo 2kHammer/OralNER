@@ -1,7 +1,9 @@
 //default backend url
 let API_BASE_URL = 'http://127.0.0.1:5000'
 
-//get backend url
+/**
+ * loads the url of the backend, use default url if not avaiable
+ */
 async function loadConfig(){
     let res = await fetch("/config/config.json")
     if(res.ok){
@@ -15,6 +17,10 @@ async function loadConfig(){
 
 await loadConfig();
 
+/**
+ * Get the models metadata
+ * @returns {Object | undefined}
+ */
 export async function getModels(){
     const res = await fetch(`${API_BASE_URL}/models`)
     if(res.ok){
@@ -24,6 +30,11 @@ export async function getModels(){
     }
 }
 
+/**
+ * Get the model metadata for the `id`
+ * @param {number} id 
+ * @returns {Object | undefined}
+ */
 export async function getModel(id){
     const res = await fetch(`${API_BASE_URL}/models/${id}`)
     if(res.ok){
@@ -33,6 +44,10 @@ export async function getModel(id){
     }
 }
 
+/**
+ * Returns the metadata of the active model
+ * @returns {Object | undefined}
+ */
 export async function getActiveModel() {
     //needs try and catch because this function checks if the backend is available
     try{
@@ -49,6 +64,11 @@ export async function getActiveModel() {
     }
 }
 
+/**
+ * Sets the model with `id` as active
+ * @param {number} id 
+ * @returns {boolean}
+ */
 export async function setActiveModel(id){
     const res = await fetch(`${API_BASE_URL}/models/active/${id}`,{method:'PUT'})
     if (res.status != 204){
@@ -58,6 +78,11 @@ export async function setActiveModel(id){
     }
 }
 
+/**
+ * Starts a NER-job with text
+ * @param {string} text 
+ * @returns {string | undefined} - the job-id or undefined
+ */
 export async function applyNERText(text){
     const res = await fetch(`${API_BASE_URL}/ner`,{method:'POST',headers: { "Content-Type": "application/json" },body: JSON.stringify({text})})
     if (res.status == 200){
@@ -68,6 +93,11 @@ export async function applyNERText(text){
     }
 }
 
+/**
+ * Starts a NER-job with a file
+ * @param {{file: file, split_sentences: boolean}} formData 
+ * @returns {string | undefined} - the job-id or undefined
+ */
 export async function applyNERFile(formData){
     const res = await fetch(`${API_BASE_URL}/ner`,{method:'POST',body:formData}) 
     if (res.status == 200){
@@ -79,6 +109,11 @@ export async function applyNERFile(formData){
     }
 }
 
+/**
+ * Gets the status or results of a NER-Job
+ * @param {string} job_id 
+ * @returns {{status: string, result:Object}}
+ */
 export async function getNERResults(job_id){
     const res = await fetch(`${API_BASE_URL}/ner/${job_id}`,{method:'GET'})
     if (res.status == 200 || res.status  == 202){
@@ -95,6 +130,10 @@ export async function getNERResults(job_id){
 
 }
 
+/**
+ * Gets the trainingsdatasets metadata
+ * @returns {Object | undefined}
+ */
 export async function getTrainingsData(){
     const res = await fetch(`${API_BASE_URL}/trainingdata`);
     if (res.ok){
@@ -104,6 +143,14 @@ export async function getTrainingsData(){
     }
 }
 
+/**
+ * Starts the model finetuning
+ * @param {number} modelId - id of the model which should be finetuned
+ * @param {number} datasetId -id of the dataset which should be used for finetuning
+ * @param {string} name - name of the new model
+ * @param {boolean} splitSentences - should the trainingdata be split into sentences 
+ * @returns {number} - modified model id
+ */
 export async function startFinetune(modelId, datasetId, name, splitSentences){
     let body =  JSON.stringify({
         "model_id":modelId,
@@ -115,12 +162,19 @@ export async function startFinetune(modelId, datasetId, name, splitSentences){
     })
     const res = await fetch(`${API_BASE_URL}/ner/finetune`, {method:'POST',headers: { "Content-Type": "application/json" }, body:body})
     if (res.status == 202){
-        return await res.json();
+        let responseData = await res.json();
+        return responseData["modified_model_id"]
     } else {
         return undefined;
     }
 }
 
+/**
+ * Uploads a trainingsdataset
+ * @param {file} file 
+ * @param {string} datasetName 
+ * @returns {boolean}
+ */
 export async function uploadTrainingData(file, datasetName){
     let formData = new FormData();
     formData.append("file", file)

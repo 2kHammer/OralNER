@@ -1,15 +1,7 @@
-'''
-So können die jeweiligen Modelle in den zugehörigen Ort gespeichert werden
-model_name = "mschiesser/ner-bert-german"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForTokenClassification.from_pretrained(model_name)
-    path =BASE_MODELS_PATH + "/mschiesser_ner-bert-german"
-    tokenizer.save_pretrained(path)
-    model.save_pretrained(path)
-'''
 import os
 
 import spacy
+from flair.models import SequenceTagger
 from spacy.cli import download
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 
@@ -22,6 +14,9 @@ from app.utils.config import STORE_PATH, MODELS_PATH, BASE_MODELS_PATH, MODIFIED
 def init_store_models():
     """
     Creates the store and loads the default models
+
+    Returns
+    (List[NERModel]): list of the downloaded NER-Models
     """
     # create path
     if not os.path.exists(STORE_PATH):
@@ -42,21 +37,33 @@ def init_store_models():
         os.makedirs(SPACY_TRAININGSDATA_PATH)
 
     models_for_metadata = []
-    model_spacy_default =check_load_default_spacy(STORE_TEMP_PATH)
+    model_spacy_default =check_load_default_spacy(BASE_MODELS_PATH)
     if model_spacy_default is not None:
         models_for_metadata.append(model_spacy_default)
         
-    model_hf_default = check_load_default_huggingface(STORE_TEMP_PATH)
+    model_hf_default = check_load_default_huggingface(BASE_MODELS_PATH)
     if model_hf_default is not None:
         models_for_metadata.append(model_hf_default)
 
-    print(len(models_for_metadata))
+    model_fl_default = check_load_default_flair(BASE_MODELS_PATH)
+    if model_fl_default is not None:
+        models_for_metadata.append(model_fl_default)
 
+    return models_for_metadata
 
 
 
 def check_load_default_spacy(base_model_path):
-    spacy_default = "de_core_news_md"
+    """
+    Checks if the simple spacy model is in `base_model_path`
+
+    Parameters
+    base_model_path (str): the path where the base models are stored
+
+    Returns
+    (NERModel): if an model was loaded and saved at `base_model_path`
+    """
+    spacy_default = "de_core_news_sm"
     spacy_default_path = base_model_path + "/" + spacy_default
     if not os.path.exists(spacy_default_path):
         download(spacy_default)
@@ -67,6 +74,15 @@ def check_load_default_spacy(base_model_path):
         return None
     
 def check_load_default_huggingface(base_model_path):
+    """
+    Checks if the default huggingface model is in `base_model_path`
+
+    Parameters
+    base_model_path (str): the path where the base models are stored
+
+    Returns
+    (NERModel): if an model was loaded and saved at `base_model_path`
+    """
     huggingface_default = "mschiesser/ner-bert-german"
     huggingface_default_path = base_model_path+"/mschiesser_ner-bert-german"
 
@@ -76,28 +92,29 @@ def check_load_default_huggingface(base_model_path):
 
         tok.save_pretrained(huggingface_default_path)
         model.save_pretrained(huggingface_default_path)
-        return NERModel(2,huggingface_default,FrameworkNames.HUGGINGFACE,huggingface_default,huggingface_default_path)
+        return NERModel(1,huggingface_default,FrameworkNames.HUGGINGFACE,huggingface_default,huggingface_default_path)
+    else:
+        return None
+
+def check_load_default_flair(base_model_path):
+    """
+    Checks if the default flair model is in `base_model_path`
+
+    Parameters
+    base_model_path (str): the path where the base models are stored
+
+    Returns
+    (NERModel): if an model was loaded and saved at `base_model_path`
+    """
+    flair_default = "flair/ner-german"
+    flair_default_path = base_model_path + "/flair_ner-german"
+
+    if not os.path.exists(flair_default_path):
+        os.makedirs(flair_default_path)
+        tagger = SequenceTagger.load(flair_default)
+        tagger.save(flair_default_path+ "/flair_ner_german.pt")
+        return NERModel(1,flair_default,FrameworkNames.FLAIR,flair_default,flair_default_path)
     else:
         return None
 
 
-
-
-'''
-tagger = SequenceTagger.load("flair/ner-german")
-
-# Modell lokal speichern
-# Oberverzeichnis muss zuerst erstellt werden
-tagger.save(BASE_MODELS_PATH+"/flair_ner-german/flair_ner-german.pt")
-'''
-
-'''
-Muss die Base Models auch zur Registry hinzufügen
-def test_add_to_registry():
-    model_registry.add_model(NERModel(1, "flair/ner-german", FrameworkNames.FLAIR, "flair/ner-german",
-                                      BASE_MODELS_PATH + "/flair_ner-german/flair_ner-german.pt"))
-'''
-
-'''
-Muss die Datensätze auch laden
-'''

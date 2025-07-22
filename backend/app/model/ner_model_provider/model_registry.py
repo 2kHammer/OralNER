@@ -7,7 +7,7 @@ from ..framework_provider.framework import FrameworkNames
 
 
 # -------------------------------------
-# class "DataRegistry"
+# class "ModelRegistry"
 # -------------------------------------
 class ModelRegistry:
     """ Managing the models metadata"""
@@ -54,6 +54,7 @@ class ModelRegistry:
         Returns
         (NERModel): the modified model
         """
+        new_model_name = self._check_make_name_unique(new_model_name)
         # change path to relative
         abs_path = MODIFIED_MODELS_PATH+"/"+new_model_name
         index_store = abs_path.find("app/")

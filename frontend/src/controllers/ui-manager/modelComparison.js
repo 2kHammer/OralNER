@@ -6,8 +6,14 @@ let selectedId = undefined
 let buttonSetActive = document.getElementById("buttonSetModelActive")
 let labelFeedbackSetModelActive = document.getElementById("labelFeedbackSetModelActive")
 
-/*
- * general function
+/**
+ * Creates the table to compare and select data (models, datasets)
+ * 
+ * @param {string[][]} data - data in the order in which it is displayed in the table 
+ * @param {string[]} columns - the column names for the data
+ * @param {HTMLElement} container - the html element where the table is saved
+ * @param {(id)=> void} handleClickModel - the function which defines how an element selection is handled
+ }}
  */
 export function createTable(data,columns, container, handleClickModel) {
     const table = document.createElement('table');
@@ -55,6 +61,20 @@ export function createTable(data,columns, container, handleClickModel) {
     container.appendChild(table);
 }
 
+
+
+/*
+ * for Model Comparison Window
+ */
+
+
+const container = document.getElementById("modelComparisonContainer");
+    
+/**
+ * Creates the data for createTable from the model metadata `models`
+ * @param {Object[]} models - model metadata from the backend 
+ * @returns {string[][]} - data in order for the table
+ */
 export function createModelTableVals(models){
   let modelVals = []
   models.forEach(model => {
@@ -80,6 +100,11 @@ export function createModelTableVals(models){
   return modelVals
 }
 
+/**
+ * Returns "" if `toCheck` is no number, else returns it rounded
+ * @param {any} toCheck 
+ * @returns {number | string} - fixed number or ""
+ */
 function roundNumberReturnSpace(toCheck){
   if (Number.isFinite(toCheck)){
     return toCheck.toFixed(2)
@@ -88,18 +113,19 @@ function roundNumberReturnSpace(toCheck){
   }
 }
 
-/*
- * for Model Comparison Window
+/**
+ * Saves the id for the selected model in `selectedId`
+ * @param {number} modelId 
  */
-const container = document.getElementById("modelComparisonContainer");
-    
-
 function handleClickModelComparison(modelId){
     selectedId = modelId;
     console.log('Ausgewählte ID:', selectedId);
     buttonSetActive.disabled = false;
 }
 
+/**
+ * Tries to set the selected model as active and displays the result
+ */
 async function setModelActive(){
   let now = new Date();
   let timeStr = now.toLocaleTimeString();
@@ -110,6 +136,9 @@ async function setModelActive(){
   }
 }
 
+/**
+ * Inits the comparison window: retrieves models and creates the table
+ */
 export async function initComparisonWindow(){
   try{
     let models = await getModels();
@@ -121,6 +150,11 @@ export async function initComparisonWindow(){
     console.error("No Server connection for model comparison")
   }
 }
+
+
+/*
+ * Event Listeners and applied functions 
+ */
 
 buttonSetActive.onclick = setModelActive
 await initComparisonWindow();
