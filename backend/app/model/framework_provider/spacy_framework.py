@@ -41,9 +41,11 @@ class SpacyFramework(Framework):
     @property
     def default_finetuning_params(self):
         return {
-            'max_epochs': 0,
-            'max_steps': 400,
-            'eval_frequency': 20
+            'max_epochs': 10,
+            'max_steps': 0,
+            'eval_frequency': 20,
+            'learn_rate_warmup_steps':20,
+            'learn_rate_total_steps':200
         }
 
     def load_model(self, model):
@@ -162,7 +164,11 @@ class SpacyFramework(Framework):
 
         # set the training steps
         config["training"]["max_epochs"] = params["max_epochs"]
-        config["training"]["max_steps"] = params["max_steps"]
+        # if the steps == 0, it is controller over epochs
+        if(params["max_steps"]==0):
+            config["training"].pop("max_steps",None)
+        else:
+            config["training"]["max_steps"] = params["max_steps"]
         config["training"]["eval_frequency"] = params["eval_frequency"]
         # modifies the params that the model will be finetuned
         if "factory" in config["components"]["ner"]:
@@ -171,6 +177,9 @@ class SpacyFramework(Framework):
         if "factory" in config["components"]["transformer"]:
             config["components"]["transformer"].pop("factory",None)
         config["components"]["transformer"]["source"] = correct_base_model_path
+        config["training"]["optimizer"]["learn_rate"]["warmup_steps"] = params["learn_rate_warmup_steps"]
+        config["training"]["optimizer"]["learn_rate"]["total_steps"] = params["learn_rate_total_steps"]
+
 
         # saves the training config for the new model in the directory of the base model
         new_config_path = correct_base_model_path+"/train_config.cfg"

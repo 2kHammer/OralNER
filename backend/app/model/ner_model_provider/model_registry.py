@@ -2,7 +2,6 @@ from .ner_model import NERModel, TrainingResults
 from app.utils.json_manager import JsonManager
 from app.utils.helpers import get_current_datetime, random_string
 from app.utils.config import MODEL_METADATA_PATH, MODIFIED_MODELS_PATH
-from ..framework_provider.framework import FrameworkNames
 
 
 

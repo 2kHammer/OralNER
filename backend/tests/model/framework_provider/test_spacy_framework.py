@@ -140,8 +140,8 @@ def test_check_if_the_model_tokens_are_the_same_as_the_default_tokens_for_all_da
 def test_prepare_training_data(training_data_id=2, model_id = 8):
     rows = data_registry.load_training_data(training_data_id)
     sf = SpacyFramework()
-    sf.prepare_training_data(rows, tokenizer_path=None, train_size=0.7, validation_size=0.3, split_sentences=True, seed=42)
-    base_model = model_registry.list_model(8)
+    sf.prepare_training_data(rows, tokenizer_path=None, train_size=0.8, validation_size=0.2, split_sentences=True)
+    base_model = model_registry.list_model(model_id)
     nlp = spacy.load(sf._get_correct_model_path(base_model.storage_path))
     #
     train_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy",nlp)

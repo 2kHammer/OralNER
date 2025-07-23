@@ -35,7 +35,7 @@ class FlairFramework(Framework):
         return {
             "learning_rate": 0.0025,
             "mini_batch_size": 64,
-            "max_epochs": 20,
+            "max_epochs": 10,
         }
 
     def load_model(self, model):
