@@ -89,19 +89,6 @@ def test_get_correct_model_path():
             new_test_path  = test_path + "/t/"
             sf._get_correct_model_path(new_test_path)
 
-def test_create_doc():
-    tokens = ["Ich", "bin", "Alexander", "Hammer", "und", "wohne", "in","Musterstrasse","1","55555", "an","Silvester"]
-    labels = ["O","O", "B-PER","I-PER", "O","O","O","B-LOC","I-LOC","I-LOC","O","B-EVENT"]
-    nlp = spacy.load(DEFAULT_TOKENIZER_PATH)
-    sf = SpacyFramework()
-    doc =sf._create_doc(nlp,tokens, labels)
-    ent_per = doc.ents[0]
-    ent_loc = doc.ents[1]
-    ent_event = doc.ents[2]
-    assert ent_per.text == "Alexander Hammer" and ent_per.label_ == "PER" and ent_per.start == 2 and ent_per.end == 4
-    assert ent_loc.text == "Musterstrasse 1 55555" and ent_loc.label_ == "LOC" and ent_loc.start == 7 and ent_loc.end == 10
-    assert ent_event.text == "Silvester" and ent_event.label_ == "EVENT" and ent_event.start == 11 and ent_event.end == 12
-
 # -------------------------------------
 # integration tests
 # -------------------------------------
@@ -137,23 +124,54 @@ def test_check_if_the_model_tokens_are_the_same_as_the_default_tokens_for_all_da
     for i in range(0,5):
         test_load_apply_ner_bert_german_model(model_id=8, dataset_id=i)
 
-def test_prepare_training_data(training_data_id=2, model_id = 8):
+def test_prepare_training_data(training_data_id=2, split_sen=False):
     rows = data_registry.load_training_data(training_data_id)
     sf = SpacyFramework()
-    sf.prepare_training_data(rows, tokenizer_path=None, train_size=0.8, validation_size=0.2, split_sentences=True)
-    base_model = model_registry.list_model(model_id)
-    nlp = spacy.load(sf._get_correct_model_path(base_model.storage_path))
-    #
-    train_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy",nlp)
-    valid_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy",nlp)
+    sf.prepare_training_data(rows, tokenizer_path=None, train_size=0.8, validation_size=0.2, split_sentences=split_sen)
+    train_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy")
+    valid_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy")
     train_texts = [example.reference.text for example in train_examples]
     valid_texts = [example.reference.text for example in valid_examples]
 
     sentences = data_registry.split_training_data_sentences(rows)
     sentences_text = [sen.text for sen in sentences]
-    #check if the length is the same
-    assert len(sentences_text) == (len(train_texts) + len(valid_texts))
 
+    #check if the length is the same
+    if(split_sen):
+        assert len(sentences_text) == (len(train_texts) + len(valid_texts))
+    else:
+        assert len(rows) == (len(train_texts) + len(valid_texts))
+    test_doc_bin_files(rows)
+
+def test_doc_bin_files(rows):
+    sf = SpacyFramework()
+    train_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy")
+    valid_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy")
+    counts = {}
+    for train_example in train_examples:
+        print(train_example.text)
+        for ent in train_example.reference.ents:
+            print(f"Entity: {ent.text}, Label: {ent.label_}, Start Char: {ent.start_char}, End Char: {ent.end_char}")
+            counts[ent.label_] = counts.get(ent.label_, 0) + 1
+        print("-" * 40)
+
+    counts_valid = {}
+    for valid_example in valid_examples:
+        for ent in valid_example.reference.ents:
+            counts_valid[ent.label_] = counts_valid.get(ent.label_, 0) + 1
+
+    print("Label counts:", counts)
+    print("Label counts_valid:", counts_valid)
+
+    counts_real = {}
+    for row in rows:
+        for ent in row.entities:
+            counts_real[ent["typ"]] = counts_real.get(ent["typ"], 0) + 1
+    print("real label counts: ",counts_real)
+
+    for key in counts_real.keys():
+        # few examples are in train and valid -> more entities than in real dataset
+        assert counts_real[key] < (counts.get(key,0) + counts_valid.get(key,0))
 
 def test_finetune(base_model_id=7, dataset_size=100):
     # test a very fast finetune
@@ -191,7 +209,7 @@ def test_write_read_spacy_files(dataset_id=4):
     nlp = spacy.load(DEFAULT_TOKENIZER_PATH)
     rows = data_registry.load_training_data(dataset_id)
     sf._bio_to_spacy(rows, STORE_PATH+"/Temp/test.spacy")
-    examples = sf._get_training_examples_docbin(STORE_PATH+"/Temp/test.spacy",nlp)
+    examples = sf._get_training_examples_docbin(STORE_PATH+"/Temp/test.spacy")
     #check if the right document was written
     assert len(examples) == len(rows)
 

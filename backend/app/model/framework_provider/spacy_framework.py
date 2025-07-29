@@ -1,3 +1,4 @@
+import gc
 import os
 import time
 from random import shuffle
@@ -9,12 +10,12 @@ from spacy.training import Example
 from spacy.util import load_config, minibatch
 from spacy.cli.train import train
 
-from app.model.data_provider.adg_row import ADGRow
+from app.model.data_provider.adg_row import ADGRow, ADGSentence
 from app.model.data_provider.data_registry import data_registry
 from app.model.framework_provider.framework import Framework, FrameworkNames
 from app.model.framework_provider.framework_utils import type_check_process_ner_pipeline
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
-from app.utils.config import SPACY_TRAININGSDATA_PATH
+from app.utils.config import SPACY_TRAININGSDATA_PATH, BASE_MODELS_PATH, DEFAULT_TOKENIZER_PATH
 
 '''
     notes:
@@ -41,7 +42,7 @@ class SpacyFramework(Framework):
     @property
     def default_finetuning_params(self):
         return {
-            'max_epochs': 10,
+            'max_epochs': 40,
             'max_steps': 0,
             'eval_frequency': 20,
             'learn_rate_warmup_steps':20,
@@ -124,6 +125,8 @@ class SpacyFramework(Framework):
             metrics, args =self._finetune_transformer_spacy(correct_base_model_path, new_model_path,params)
         else:
             metrics, args =self._finetune_default_spacy(correct_base_model_path, new_model_path)
+        # manually call garbage collection -test
+        gc.collect()
         return metrics, args
 
 
@@ -205,8 +208,8 @@ class SpacyFramework(Framework):
         (dict, params): the first dict contains f1, precision, recall, duration, accuracy = None, the second dict returns the params
         """
         nlp = spacy.load(self._get_correct_model_path(correct_base_model_path))
-        train_examples = self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy", nlp)
-        valid_examples = self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy", nlp)
+        train_examples = self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy")
+        valid_examples = self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy")
         # only train embedding and ner
         start = time.time()
         best_metrics = None
@@ -242,7 +245,7 @@ class SpacyFramework(Framework):
         (TrainingResults)
         """
         nlp = spacy.load(path)
-        valid_examples =self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy", nlp)
+        valid_examples =self._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy")
         scores = self._evaluate_finetune_spacy(nlp, valid_examples)
         return TrainingResults(f1=scores["ents_f"],recall=scores["ents_r"],precision=scores["ents_p"],duration=None, accuracy=None)
         
@@ -291,42 +294,57 @@ class SpacyFramework(Framework):
         metrics = self._calc_metrics(annoted_labels, predicted_labels)
         return tokens, predicted_labels, metrics
 
-    def _bio_to_spacy(self, data, output_path, lang="de"):
+    def _bio_to_spacy(self, data, output_path):
         """
         Creates .spacy file the annotated data
 
         Parameters
         data (ADGRow | ADGSentence): the data that should be saved in an .spacy file
         output_path (str): the path where the .spacy file should be saved
-        lang (str): to initialize the spacy language object
         """
-        nlp = spacy.blank(lang)
-        doc_bin = DocBin()
+        on_sentence = False
+        if isinstance(data[0], ADGSentence):
+            on_sentence = True
 
+        doc_bin = DocBin()
+        nlp = spacy.load(DEFAULT_TOKENIZER_PATH)
         for row_sen in data:
-            doc = self._create_doc(nlp,row_sen.tokens, row_sen.labels)
+            doc = self._create_doc(row_sen, nlp=nlp)
             doc_bin.add(doc)
 
         doc_bin.to_disk(output_path)
 
-    def _create_doc(self, nlp, tokens, labels):
+    def _create_doc(self, statement, nlp):
         """
         Creates a spacy DocBin Object from `tokens` and `labels`
 
         Parameters
+        statement (ADGRow | ADGSentence): data that should be converted to DocBin
         nlp (spacy language object)
-        tokens (List[str])
-        labels (List[str]): the corresponding labels to the tokens
+
 
         Returns
         (DocBin)
         """
-        doc = nlp.make_doc(" ".join(tokens))
+        on_sentence = False
+        if isinstance(statement, ADGSentence):
+            on_sentence = True
+
+        # make a doc with the default tokenizer
+        doc = nlp.make_doc(statement.text)
         ents = []
         start = 0
         current_ent = None
-        for token, label in zip(doc, labels):
-            end = start + len(token.text)
+        for index, label in enumerate(statement.labels):
+            token = statement.tokens[index]
+            startindex_label = None
+            if on_sentence:
+                startindex_label = statement.token_indexes[index]
+            else:
+                startindex_label = statement.indexes[index]
+
+            start = startindex_label
+            end = startindex_label + len(token)
             if label.startswith("B-"):
                 if current_ent:
                     ents.append(current_ent)
@@ -337,7 +355,6 @@ class SpacyFramework(Framework):
                 if current_ent:
                     ents.append(current_ent)
                     current_ent = None
-            start = end + 1  # include space
         if current_ent:
             ents.append(current_ent)
         doc.ents = [doc.char_span(start, end, label=label) for start, end, label in ents if
@@ -363,22 +380,22 @@ class SpacyFramework(Framework):
             else:
                 raise ValueError(f"Cannot find model in {path}")
 
-    def _get_training_examples_docbin(self, path,nlp):
+    def _get_training_examples_docbin(self, path):
         """
-        Returns the data from an spacy file as a List of Example object
+        Returns the data from an spacy file as a List of Example objects
 
         Parameters
         path (str): the path where the .spacy file is stored
-        nlp (the spacy language object)
 
         Returns
         (List[Example])
         """
+        nlp = spacy.load(DEFAULT_TOKENIZER_PATH)
         doc_bin = DocBin().from_disk(path)
         docs = list(doc_bin.get_docs(nlp.vocab))
         examples = []
         for doc in docs:
             pred_doc = nlp.make_doc(doc.text)
             examples.append(Example(pred_doc, doc))
-        refs = [example.reference.ents for example in examples]
+        #refs = [example.reference.ents for example in examples]
         return examples

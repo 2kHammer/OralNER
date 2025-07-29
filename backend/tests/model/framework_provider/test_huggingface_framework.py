@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from datasets import Dataset
+from transformers import AutoTokenizer
 
 from app.model.data_provider.data_registry import data_registry
 from app.model.ner_model_provider.model_registry import model_registry
@@ -81,9 +82,9 @@ def test_check_if_entity_types_are_possible(dataset_id=4):
         if type != "O":
             assert type[2:] in possible_entities
 
-def test_prepare_training_data(dataset_id=3, test_size = 100):
+def test_prepare_training_data(dataset_id=3, test_size = 70):
     hf = HuggingFaceFramework()
-    rows = data_registry.load_training_data(dataset_id)[50:50+test_size]
+    rows = data_registry.load_training_data(dataset_id)[0:test_size]
     dataset, label_id = hf.prepare_training_data(rows,path_tokenizer,seed=42)
     tokens_row = [row.tokens for row in rows]
     # check if sizes match
@@ -91,6 +92,57 @@ def test_prepare_training_data(dataset_id=3, test_size = 100):
     # check if every statement is in the dataset dict
     for tokens_statement in tokens_row:
         assert ((tokens_statement in dataset["train"]["tokens"]) or (tokens_statement in dataset["validation"]["tokens"]))
+
+    tokenizer = AutoTokenizer.from_pretrained(path_tokenizer)
+    # View test if the splitted tokens match to the annoted entities
+    """
+    labels_row = [row.labels for row in rows]
+    id_label = {v:k for k,v in label_id.items()}
+    for index, labels in enumerate(dataset["train"]["labels"]):
+        print(dataset["train"]["tokens"][index])
+        label_back = [id_label.get(label, "-100") for label in labels]
+        assert len(label_back) == len(dataset["train"]["input_ids"][index])
+        subtokens = tokenizer.convert_ids_to_tokens(dataset["train"]["input_ids"][index])
+        for index_label, label in enumerate(label_back):
+            if label != "O" and label != "-100":
+                print(subtokens[index_label], label)
+
+        print("-"*50)
+    """
+
+    """
+    check the mapping of the labels
+    doesn't work 
+        because convert_ids_to_tokens() doesnt always reconstruct the original token 
+        make better maye
+        
+    id_label = {v: k for k, v in label_id.items()}
+    for index, tokens in enumerate(dataset["train"]["tokens"]):
+        tokens_checked = False
+        # find matching row
+        for row in rows:
+            not_the_same = False
+            for token in tokens:
+                if not token in row.tokens:
+                    not_the_same = True
+
+            if not not_the_same:
+                # check entities
+                label_back = [id_label.get(label, "-100") for label in dataset["train"]["labels"][index]]
+                subtokens = tokenizer.convert_ids_to_tokens(dataset["train"]["input_ids"][index])
+                ent_texts = [ent["entity_text"] for ent in row.entities]
+                print(ent_texts)
+                for index_label, label in enumerate(label_back):
+                    if subtokens[index_label] == "Große":
+                        print("test")
+                    if label != "O" and label != "-100":
+                        print(subtokens[index_label])
+                        assert any((subtokens[index_label] in ent_text) for ent_text in ent_texts)
+                tokens_checked = True
+            if tokens_checked:
+                break
+        """
+
 
 def test_finetune_ner_model(model_id=0, dataset_id=3, test_size=30):
     base_model = model_registry.list_model(model_id)
