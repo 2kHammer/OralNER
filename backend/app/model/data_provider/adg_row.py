@@ -26,7 +26,8 @@ class ADGRow:
     labels: List[str]
     entities: List[dict]
     other: List[Tuple[str, str]]
-    
+
+
 
 def extract_adg_row(row, nlp, idx):
     """
@@ -52,7 +53,7 @@ def extract_adg_row(row, nlp, idx):
 
     #extract entities from text
     entities = []
-    pattern = "(.*)\[(PER|ROLE|ORG|LOC|WORK_OT_ART|NORP|EVENT|DATE)\]"
+    pattern = "(.*)\[(PER|ROLE|ORG|LOC|WORK_OF_ART|NORP|EVENT|DATE)\]"
     for rest in first_column:
         if rest != '':
             match = re.match(pattern, rest)

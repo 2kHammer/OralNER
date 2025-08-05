@@ -22,6 +22,7 @@ class Framework(ABC):
     # -------------------------------------
     # public functions
     # -------------------------------------
+
     @property
     @abstractmethod
     def default_finetuning_params(self):

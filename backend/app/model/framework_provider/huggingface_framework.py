@@ -7,7 +7,7 @@ from evaluate import load
 import numpy as np
 
 from app.model.data_provider.adg_row import ADGRow
-from app.model.data_provider.data_registry import data_registry
+from app.model.data_provider.data_registry import data_registry, labels_dic
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
 from app.utils.helpers import delete_checkpoints_folder
 from .framework_utils import type_check_process_ner_pipeline
@@ -106,8 +106,9 @@ class HuggingFaceFramework(Framework):
 
 
         # create dictionary with entity-types in the trainingsdata
-        all_labels = list(set(label for row in rows for label in row.labels))
-        label_id = {label: i for i, label in enumerate(all_labels)}
+        #all_labels = list(set(label for row in rows for label in row.labels))
+        #label_id = {label: i for i, label in enumerate(all_labels)}
+        label_id = labels_dic
 
         #split data
         train, valid, _ = self._train_test_split(rows, train_size, validation_size, seed=seed)

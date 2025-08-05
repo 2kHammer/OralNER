@@ -124,7 +124,7 @@ def test_check_if_the_model_tokens_are_the_same_as_the_default_tokens_for_all_da
     for i in range(0,5):
         test_load_apply_ner_bert_german_model(model_id=8, dataset_id=i)
 
-def test_prepare_training_data(training_data_id=2, split_sen=False):
+def test_prepare_training_data(training_data_id=2, split_sen=True):
     rows = data_registry.load_training_data(training_data_id)
     sf = SpacyFramework()
     sf.prepare_training_data(rows, tokenizer_path=None, train_size=0.8, validation_size=0.2, split_sentences=split_sen)
@@ -141,9 +141,9 @@ def test_prepare_training_data(training_data_id=2, split_sen=False):
         assert len(sentences_text) == (len(train_texts) + len(valid_texts))
     else:
         assert len(rows) == (len(train_texts) + len(valid_texts))
-    test_doc_bin_files(rows)
+    doc_bin_files_test(rows)
 
-def test_doc_bin_files(rows):
+def doc_bin_files_test(rows):
     sf = SpacyFramework()
     train_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/train.spacy")
     valid_examples = sf._get_training_examples_docbin(SPACY_TRAININGSDATA_PATH+"/valid.spacy")
@@ -165,13 +165,17 @@ def test_doc_bin_files(rows):
 
     counts_real = {}
     for row in rows:
+        for label in row.labels:
+            if label != "O" and label[0] != "I":
+                counts_real[label[2:]] = counts_real.get(label[2:],0) + 1
+        """
         for ent in row.entities:
-            counts_real[ent["typ"]] = counts_real.get(ent["typ"], 0) + 1
+            counts_real[ent["typ"]] = counts_real.get(ent["typ"], 0) + len(ent["indexes"])
+        """
     print("real label counts: ",counts_real)
 
     for key in counts_real.keys():
-        # few examples are in train and valid -> more entities than in real dataset
-        assert counts_real[key] < (counts.get(key,0) + counts_valid.get(key,0))
+        assert  abs((counts.get(key,0) + counts_valid.get(key,0))-counts_real[key]) < 3
 
 def test_finetune(base_model_id=7, dataset_size=100):
     # test a very fast finetune

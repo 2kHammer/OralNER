@@ -9,6 +9,26 @@ from app.utils.json_manager import JsonManager
 from dataclasses import dataclass, asdict
 from app.utils.config import TRAININGSDATA_METADATA_PATH, TRAININGSDATA_CONVERTED_PATH, DEFAULT_TOKENIZER_PATH
 
+labels_dic = {
+    "O":0,
+    "B-PER":1,
+    "I-PER":2,
+    "B-ROLE":3,
+    "I-ROLE":4,
+    "B-ORG":5,
+    "I-ORG":6,
+    "B-LOC":7,
+    "I-LOC":8,
+    "B-WORK_OF_ART":9,
+    "I-WORK_OF_ART":10,
+    "B-NORP":11,
+    "I-NORP":12,
+    "B-EVENT":13,
+    "I-EVENT":14,
+    "B-DATE":15,
+    "I-DATE":16
+}
+
 @dataclass
 class TrainingData:
     """

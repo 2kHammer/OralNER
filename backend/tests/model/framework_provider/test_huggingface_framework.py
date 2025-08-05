@@ -82,9 +82,9 @@ def test_check_if_entity_types_are_possible(dataset_id=4):
         if type != "O":
             assert type[2:] in possible_entities
 
-def test_prepare_training_data(dataset_id=3, test_size = 70):
+def test_prepare_training_data(dataset_id=3, test_size = 150):
     hf = HuggingFaceFramework()
-    rows = data_registry.load_training_data(dataset_id)[0:test_size]
+    rows = data_registry.load_training_data(dataset_id)[100:100+test_size]
     dataset, label_id = hf.prepare_training_data(rows,path_tokenizer,seed=42)
     tokens_row = [row.tokens for row in rows]
     # check if sizes match
@@ -93,9 +93,9 @@ def test_prepare_training_data(dataset_id=3, test_size = 70):
     for tokens_statement in tokens_row:
         assert ((tokens_statement in dataset["train"]["tokens"]) or (tokens_statement in dataset["validation"]["tokens"]))
 
+    """
     tokenizer = AutoTokenizer.from_pretrained(path_tokenizer)
     # View test if the splitted tokens match to the annoted entities
-    """
     labels_row = [row.labels for row in rows]
     id_label = {v:k for k,v in label_id.items()}
     for index, labels in enumerate(dataset["train"]["labels"]):

@@ -113,11 +113,12 @@ def test_load_apply_model(model_id=3, training_data_id=0, size_test=50):
                 if ent["start_token"] == ent["end_token"]:
                     assert ent["text"] == tokens[index][ent["start_token"]]
 
-def test_prepare_training_data(model_id=3,training_data_id=1,size_test=100):
+def test_prepare_training_data(model_id=3,training_data_id=1,size_test=200):
     ff = FlairFramework()
     ff.load_model(model_registry.list_model(model_id))
     rows = data_registry.load_training_data(training_data_id)[100:100+size_test]
     corpus, label_dict =ff.prepare_training_data(rows)
+
     #check amount labels between the rows and the corpus (without sentence split)
     amount_corpus_labels = 0
     for sen in corpus.train:

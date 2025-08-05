@@ -2,7 +2,6 @@ from flask import Flask
 from flask_cors import CORS
 from app.model.ner_model_provider.model_registry import model_registry
 from app.utils.load_models import init_store_models
-from service.app_router import api
 
 
 if __name__ == '__main__':
@@ -12,6 +11,7 @@ if __name__ == '__main__':
         model_registry.add_model(model)
 
     # start the rest api
+    from service.app_router import api
     app = Flask(__name__)
     app.register_blueprint(api)
     CORS(app)

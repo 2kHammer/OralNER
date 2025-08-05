@@ -147,7 +147,9 @@ class SpacyFramework(Framework):
     def _finetune_transformer_spacy(self, correct_base_model_path, new_model_path, params):
         """
         finetunes a transformer model. Uses the config.cfg of the base models and modify a few parameters.
-        Source: https://medium.com/@zielemanj/training-and-fine-tuning-ner-transformer-models-using-spacy3-and-spacy-annotator-c3cd95fdfd23
+        Source: 
+            https://medium.com/@zielemanj/training-and-fine-tuning-ner-transformer-models-using-spacy3-and-spacy-annotator-c3cd95fdfd23
+            https://github.com/explosion/spaCy/discussions/9233
 
         Parameters:
         correct_base_model_path (str): the path of the base model from _get_correct_model_path
@@ -177,9 +179,11 @@ class SpacyFramework(Framework):
         if "factory" in config["components"]["ner"]:
             config["components"]["ner"].pop("factory",None)
         config["components"]["ner"]["source"] = correct_base_model_path
+        config["initialize"]["components"]["transformer"] = {"source": correct_base_model_path}
         if "factory" in config["components"]["transformer"]:
             config["components"]["transformer"].pop("factory",None)
         config["components"]["transformer"]["source"] = correct_base_model_path
+        config["initialize"]["components"]["ner"] = {"source": correct_base_model_path}
         config["training"]["optimizer"]["learn_rate"]["warmup_steps"] = params["learn_rate_warmup_steps"]
         config["training"]["optimizer"]["learn_rate"]["total_steps"] = params["learn_rate_total_steps"]
 

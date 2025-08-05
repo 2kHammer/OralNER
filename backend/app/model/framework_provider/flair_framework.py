@@ -1,13 +1,13 @@
 import os
 import time
 
-from flair.data import Sentence
+from flair.data import Sentence, Dictionary
 from flair.datasets import ColumnCorpus
 from flair.models import SequenceTagger
 from flair.trainers import ModelTrainer
 
 from app.model.data_provider.adg_row import ADGRow
-from app.model.data_provider.data_registry import data_registry
+from app.model.data_provider.data_registry import data_registry, labels_dic
 from app.model.framework_provider.framework import Framework, FrameworkNames
 from app.model.framework_provider.framework_utils import type_check_process_ner_pipeline
 from app.model.ner_model_provider.ner_model import NERModel, TrainingResults
@@ -141,7 +141,16 @@ class FlairFramework(Framework):
         self._create_conll_files(train_modified, valid_modified)
         # use no test dataset -> include valid.txt twice, for no errors
         corpus = ColumnCorpus(CONLL_PATH,{0:'text',1:'ner'},train_file="train.txt",dev_file="valid.txt",test_file="valid.txt")
-        return corpus, corpus.make_label_dictionary(label_type="ner")
+
+        test = Dictionary(add_unk=False)
+        for label in sorted(labels_dic, key=labels_dic.get):
+            if label != "O":
+                test.add_item(label)
+        test.multi_label = True
+        test.span_labels = True
+
+        test2 = corpus.make_label_dictionary(label_type="ner")
+        return corpus, test
 
 
     #Source: https://flairnlp.github.io/flair/v0.14.0/tutorial/tutorial-training/how-to-train-sequence-tagger.html
