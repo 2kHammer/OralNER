@@ -34,7 +34,8 @@ class HuggingFaceFramework(Framework):
             "learning_rate" :2e-5,
             "per_device_train_batch_size":8,
             "per_device_eval_batch_size" :8,
-            "num_train_epochs": 25,
+            #"num_train_epochs": 25, is correct val
+            "num_train_epochs": 10,
             "weight_decay" :0.01,
             "load_best_model_at_end" : True,
             "metric_for_best_model": "f1",
@@ -105,9 +106,11 @@ class HuggingFaceFramework(Framework):
             raise TypeError("Expects an object of type ADGRow")
 
 
-        # create dictionary with entity-types in the trainingsdata
+        # create dictionary the labels dic with training data -> problem: maybe not all entities are included
         #all_labels = list(set(label for row in rows for label in row.labels))
         #label_id = {label: i for i, label in enumerate(all_labels)}
+
+        # return the labels_dic in data_registry.py
         label_id = labels_dic
 
         #split data

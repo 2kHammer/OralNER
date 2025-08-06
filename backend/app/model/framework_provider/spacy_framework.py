@@ -42,7 +42,7 @@ class SpacyFramework(Framework):
     @property
     def default_finetuning_params(self):
         return {
-            'max_epochs': 40,
+            'max_epochs': 25,
             'max_steps': 0,
             'eval_frequency': 20,
             'learn_rate_warmup_steps':20,
@@ -118,13 +118,21 @@ class SpacyFramework(Framework):
             params = self.default_finetuning_params
 
         correct_base_model_path = self._get_correct_model_path(base_model_path)
-        nlp = spacy.load(correct_base_model_path)
         metrics = None
         args = None
-        if "transformer" in nlp.pipe_names:
-            metrics, args =self._finetune_transformer_spacy(correct_base_model_path, new_model_path,params)
+        if correct_base_model_path is None:
+            if self._check_contain_base_config(base_model_path):
+                # finetune/train from base config
+                metrics, args =self._finetune_transformer_spacy(base_model_path, new_model_path,params, True)
         else:
-            metrics, args =self._finetune_default_spacy(correct_base_model_path, new_model_path)
+            nlp = spacy.load(correct_base_model_path)
+            if "transformer" in nlp.pipe_names:
+                # finetune already finetuned transformer model
+                metrics, args =self._finetune_transformer_spacy(correct_base_model_path, new_model_path,params, False)
+            else:
+                # finetune default spacy model
+                metrics, args =self._finetune_default_spacy(correct_base_model_path, new_model_path)
+
         # manually call garbage collection -test
         gc.collect()
         return metrics, args
@@ -144,9 +152,9 @@ class SpacyFramework(Framework):
     # -------------------------------------
     # private functions
     # -------------------------------------
-    def _finetune_transformer_spacy(self, correct_base_model_path, new_model_path, params):
+    def _finetune_transformer_spacy(self, correct_base_model_path, new_model_path, params, from_base=False):
         """
-        finetunes a transformer model. Uses the config.cfg of the base models and modify a few parameters.
+        finetunes/trains a transformer-based model from only config.cfg or finetunes such a finetuned model
         Source: 
             https://medium.com/@zielemanj/training-and-fine-tuning-ner-transformer-models-using-spacy3-and-spacy-annotator-c3cd95fdfd23
             https://github.com/explosion/spaCy/discussions/9233
@@ -160,7 +168,6 @@ class SpacyFramework(Framework):
         (dict, params): the first dict contains f1, precision, recall, duration, accuracy = None, the second dict returns the params
         """
         #load config
-        correct_base_model_path = self._get_correct_model_path(correct_base_model_path)
         config = load_config(correct_base_model_path+"/config.cfg")
 
         # set train and valid datasets
@@ -175,18 +182,21 @@ class SpacyFramework(Framework):
         else:
             config["training"]["max_steps"] = params["max_steps"]
         config["training"]["eval_frequency"] = params["eval_frequency"]
-        # modifies the params that the model will be finetuned
-        if "factory" in config["components"]["ner"]:
-            config["components"]["ner"].pop("factory",None)
-        config["components"]["ner"]["source"] = correct_base_model_path
-        config["initialize"]["components"]["transformer"] = {"source": correct_base_model_path}
-        if "factory" in config["components"]["transformer"]:
-            config["components"]["transformer"].pop("factory",None)
-        config["components"]["transformer"]["source"] = correct_base_model_path
-        config["initialize"]["components"]["ner"] = {"source": correct_base_model_path}
-        config["training"]["optimizer"]["learn_rate"]["warmup_steps"] = params["learn_rate_warmup_steps"]
-        config["training"]["optimizer"]["learn_rate"]["total_steps"] = params["learn_rate_total_steps"]
+        if "learn_rate_warmup_steps" in params:
+            config["training"]["optimizer"]["learn_rate"]["warmup_steps"] = params["learn_rate_warmup_steps"]
+        if "learn_rate_total_steps" in params:
+            config["training"]["optimizer"]["learn_rate"]["total_steps"] = params["learn_rate_total_steps"]
 
+        # if finetuning is applied on an already finetuned model
+        if not from_base:
+            if "factory" in config["components"]["ner"]:
+                config["components"]["ner"].pop("factory",None)
+            config["components"]["ner"]["source"] = correct_base_model_path
+            config["initialize"]["components"]["transformer"] = {"source": correct_base_model_path}
+            if "factory" in config["components"]["transformer"]:
+                config["components"]["transformer"].pop("factory",None)
+            config["components"]["transformer"]["source"] = correct_base_model_path
+            config["initialize"]["components"]["ner"] = {"source": correct_base_model_path}
 
         # saves the training config for the new model in the directory of the base model
         new_config_path = correct_base_model_path+"/train_config.cfg"
@@ -255,6 +265,7 @@ class SpacyFramework(Framework):
         
     def _evaluate_finetune_spacy(self, nlp, examples):
         """
+        Evaluates a spacy model by applying it on the valid data.
 
         Parameters
         nlp: A spacy language object from spacy.load
@@ -373,7 +384,7 @@ class SpacyFramework(Framework):
         path (str): path to check
 
         Returns
-        (str):
+        (str | None)
         """
         if os.path.isfile(path+"/meta.json"):
             return path
@@ -382,7 +393,23 @@ class SpacyFramework(Framework):
             if os.path.isfile(best_model_path+"/meta.json"):
                 return best_model_path
             else:
-                raise ValueError(f"Cannot find model in {path}")
+                return None
+
+    def _check_contain_base_config(self, path):
+        """
+        Check if `path` is the path of a base model
+
+        Parameters
+        path (str): path to check
+
+        Returns
+        (bool)
+        :return:
+        """
+        if os.path.isfile(path+"/config.cfg"):
+            return True
+        else:
+            return False
 
     def _get_training_examples_docbin(self, path):
         """

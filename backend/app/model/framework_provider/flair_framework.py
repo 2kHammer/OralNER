@@ -35,7 +35,7 @@ class FlairFramework(Framework):
         return {
             "learning_rate": 0.005,
             "mini_batch_size": 64,
-            "max_epochs": 25,
+            "max_epochs": 25
         }
 
     def load_model(self, model):
@@ -142,15 +142,20 @@ class FlairFramework(Framework):
         # use no test dataset -> include valid.txt twice, for no errors
         corpus = ColumnCorpus(CONLL_PATH,{0:'text',1:'ner'},train_file="train.txt",dev_file="valid.txt",test_file="valid.txt")
 
-        test = Dictionary(add_unk=False)
+        # make flair label directory from labels_dic in data_registry.py
+        #could create the flair label dictionary, but not all possible could be included
+        #flair_label_dic = corpus.make_label_dictionary(label_type="ner")
+        #flair uses intern BIOES- no disadvantage, predict servers the spans, I convert them back
+        flair_label_dic= Dictionary(add_unk=False)
+        added_labels = []
         for label in sorted(labels_dic, key=labels_dic.get):
-            if label != "O":
-                test.add_item(label)
-        test.multi_label = True
-        test.span_labels = True
+            if label != "O" and label[2:] not in added_labels:
+                flair_label_dic.add_item(label[2:])
+                added_labels.append(label[2:])
+        flair_label_dic.multi_label = True
+        flair_label_dic.span_labels = True
 
-        test2 = corpus.make_label_dictionary(label_type="ner")
-        return corpus, test
+        return corpus, flair_label_dic
 
 
     #Source: https://flairnlp.github.io/flair/v0.14.0/tutorial/tutorial-training/how-to-train-sequence-tagger.html

@@ -93,8 +93,8 @@ def test_load_modified_model(model_id1=3, model_id2=6):
     ff.load_model(model_registry.list_model(model_id2))
     assert old_model != ff.model
 
-# maybe abstract this test
-def test_ner_pipeline(model_id=3,training_data_id=3, size_test=50):
+# maybe abstract this test #was model_id=3
+def test_ner_pipeline(model_id=26,training_data_id=2, size_test=500):
     ff = FlairFramework()
     run_pipeline_test(framework=ff,training_data_id=training_data_id, model_id=model_id, size_test=size_test)
 
@@ -145,7 +145,7 @@ def test_finetune_model(model_id=3,training_data_id=1, dataset_size=100):
     modified_name = "FlairFastTest"
     test_path = STORE_TEMP_PATH
     rows = data_registry.load_training_data(training_data_id)
-    corpus, label_dict = ff.prepare_training_data(rows[100:100+dataset_size], split_sentences=True,seed=42)
+    corpus, label_dict = ff.prepare_training_data(rows, split_sentences=True,seed=42)
     metrics, args =ff.finetune_ner_model(base_model.storage_path, corpus, label_dict,modified_name,test_path, params=test_params)
     assert isinstance(metrics,TrainingResults)
 

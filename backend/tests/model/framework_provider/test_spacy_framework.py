@@ -67,6 +67,8 @@ def test_logic_finetune_ner_model():
             assert sf.finetune_ner_model(base_model.storage_path, {}, {}, "test",MODIFIED_MODELS_PATH, {}) == (2,2)
             base_model_transformer = model_registry.list_model(8)
             assert sf.finetune_ner_model(base_model_transformer.storage_path, {}, {}, "test",MODIFIED_MODELS_PATH, {}) == (1,1)
+            base_model_transformer = model_registry.list_model(8)
+            assert sf.finetune_ner_model(base_model_transformer.storage_path, {}, {}, "test",MODIFIED_MODELS_PATH, {}) == (1,1)
 
 def test_convert_ner_results_adg(dataset_id=3):
     rows =data_registry.load_training_data(dataset_id)
@@ -85,9 +87,8 @@ def test_get_correct_model_path():
         assert sf._get_correct_model_path(test_path) == test_path
         mock_isfile.side_effect = lambda p: p == (test_path + "/model-best/meta.json")
         assert test_path+ "/model-best" == sf._get_correct_model_path(test_path)
-        with pytest.raises(ValueError):
-            new_test_path  = test_path + "/t/"
-            sf._get_correct_model_path(new_test_path)
+        new_test_path  = test_path + "/t/"
+        assert sf._get_correct_model_path(new_test_path) == None
 
 # -------------------------------------
 # integration tests
@@ -177,7 +178,7 @@ def doc_bin_files_test(rows):
     for key in counts_real.keys():
         assert  abs((counts.get(key,0) + counts_valid.get(key,0))-counts_real[key]) < 3
 
-def test_finetune(base_model_id=7, dataset_size=100):
+def test_finetune(base_model_id=8, dataset_size=100):
     # test a very fast finetune
     base_model = model_registry.list_model(base_model_id)
     modified_model =model_registry.create_modified_model("TestSpacy",base_model)
@@ -197,6 +198,15 @@ def test_finetune_default_spacy(base_model_id=7, dataset_size=100):
     metrics, args = sf.finetune_ner_model(base_model.storage_path,None,None,modified_model.name,modified_model.storage_path,None)
     assert isinstance(metrics, TrainingResults)
 
+def test_finetune_base(base_model_id=10, dataset_size=100):
+    # test a very fast finetune
+    base_model = model_registry.list_model(base_model_id)
+    modified_model =model_registry.create_modified_model("TestSpacy",base_model)
+    sf = SpacyFramework()
+    rows = data_registry.load_training_data(0)[100:100+dataset_size]
+    sf.prepare_training_data(rows, tokenizer_path=None)
+    metrics, params = sf.finetune_ner_model(base_model.storage_path,None,None,modified_model.name,STORE_PATH+"/Temp",{"max_epochs":0,"max_steps":2,"eval_frequency":1})
+    assert isinstance(metrics, TrainingResults)
 
 def test_evaluate_finetune_spacy(model_id=7):
     ff = SpacyFramework()

@@ -123,7 +123,7 @@ export async function initFinetuningWindow() {
     try{
     let models = await getModels();
     if (models != undefined){
-        let modelVals = createModelTableVals(models)
+        let modelVals = createModelTableVals(models, false)
         createTable(modelVals, modelColumns, modelSelectionContainer, handleClickModelComparison)
     }
 

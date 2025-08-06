@@ -72,16 +72,23 @@ const container = document.getElementById("modelComparisonContainer");
     
 /**
  * Creates the data for createTable from the model metadata `models`
- * @param {Object[]} models - model metadata from the backend 
+ * @param {Object[]} models - model metadata from the backend
+ * @param {Boolean} applying - if the Table is for applying or finetuning
  * @returns {string[][]} - data in order for the table
  */
-export function createModelTableVals(models){
+export function createModelTableVals(models, applying){
+  //filter the models
+  let relevantModels = models.filter(model =>
+    applying
+      ? model.state !== "IN_TRAINING" && model.state !== "BASE_NO_APPLYING"
+      : model.state !== "IN_TRAINING"
+  );
+
   let modelVals = []
-  models.forEach(model => {
-      if(model.state != "IN_TRAINING"){
-      let rowData = [model.id, model.name, model.framework_name, model.base_model_name]
-      let trainingsData = undefined
-      if (model.trainings.length > 0){
+  relevantModels.forEach(model => {
+        let rowData = [model.id, model.name, model.framework_name, model.base_model_name]
+        let trainingsData = undefined
+        if (model.trainings.length > 0){
           let lastTrainingsIndex = model.trainings.length -1;
           let metrics = model.trainings[lastTrainingsIndex].metrics;
           trainingsData = [model.trainings[lastTrainingsIndex].date, model.trainings[lastTrainingsIndex].dataset_name, 
@@ -90,12 +97,11 @@ export function createModelTableVals(models){
           roundNumberReturnSpace(metrics.precision), 
           roundNumberReturnSpace(metrics.accuracy),
           roundNumberReturnSpace(metrics.duration)]
-      } else {
+        } else {
           trainingsData = ["","","","","","",""]
       }
       rowData = rowData.concat(trainingsData)
       modelVals.push(rowData)
-    }
   });
   return modelVals
 }
@@ -143,7 +149,7 @@ export async function initComparisonWindow(){
   try{
     let models = await getModels();
     if (models != undefined){
-      let modelData = createModelTableVals(models);
+      let modelData = createModelTableVals(models, true);
       createTable(modelData,modelColumns, container, handleClickModelComparison);
     } 
   }catch(e){
