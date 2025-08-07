@@ -8,6 +8,7 @@ from app.model.ner_model_provider.model_registry import model_registry
 from app.model.ner_model_provider.ner_model import TrainingResults
 from app.utils.config import MODIFIED_MODELS_PATH, STORE_PATH, STORE_TEMP_PATH
 from tests.model.framework_provider.test_framework import run_pipeline_test
+from tests.model.framework_provider.test_spacy_framework import base_model_id
 
 """
     Notes:
@@ -15,7 +16,8 @@ from tests.model.framework_provider.test_framework import run_pipeline_test
         they are using the datasets and models which are created in the model and data registry
         this allows the interaction of different functions to be tested
 """
-
+base_model_id =2
+finetuned_model_id = 26
 # -------------------------------------
 # unit tests
 # -------------------------------------
@@ -86,7 +88,7 @@ def test_save_to_conll():
 # integration tests
 # -------------------------------------
 #3 is the id of the base model
-def test_load_modified_model(model_id1=3, model_id2=6):
+def test_load_modified_model(model_id1=base_model_id, model_id2=finetuned_model_id):
     ff = FlairFramework()
     ff.load_model(model_registry.list_model(model_id1))
     old_model = ff.model
@@ -94,11 +96,11 @@ def test_load_modified_model(model_id1=3, model_id2=6):
     assert old_model != ff.model
 
 # maybe abstract this test #was model_id=3
-def test_ner_pipeline(model_id=26,training_data_id=2, size_test=500):
+def test_ner_pipeline(model_id=finetuned_model_id,training_data_id=2, size_test=50):
     ff = FlairFramework()
     run_pipeline_test(framework=ff,training_data_id=training_data_id, model_id=model_id, size_test=size_test)
 
-def test_load_apply_model(model_id=3, training_data_id=0, size_test=50):
+def test_load_apply_model(model_id=base_model_id, training_data_id=0, size_test=50):
     ff = FlairFramework()
     ff.load_model(model_registry.list_model(model_id))
     rows = data_registry.load_training_data(training_data_id)
@@ -113,7 +115,7 @@ def test_load_apply_model(model_id=3, training_data_id=0, size_test=50):
                 if ent["start_token"] == ent["end_token"]:
                     assert ent["text"] == tokens[index][ent["start_token"]]
 
-def test_prepare_training_data(model_id=3,training_data_id=1,size_test=200):
+def test_prepare_training_data(model_id=base_model_id,training_data_id=1,size_test=200):
     ff = FlairFramework()
     ff.load_model(model_registry.list_model(model_id))
     rows = data_registry.load_training_data(training_data_id)[100:100+size_test]
@@ -134,7 +136,7 @@ def test_prepare_training_data(model_id=3,training_data_id=1,size_test=200):
                 amount_rows_labels += 1
     assert amount_corpus_labels == amount_rows_labels
 
-def test_finetune_model(model_id=3,training_data_id=1, dataset_size=100):
+def test_finetune_model(model_id=base_model_id,training_data_id=1, dataset_size=100):
     ff = FlairFramework()
     test_params ={
         "learning_rate": 0.0025,
@@ -149,7 +151,7 @@ def test_finetune_model(model_id=3,training_data_id=1, dataset_size=100):
     metrics, args =ff.finetune_ner_model(base_model.storage_path, corpus, label_dict,modified_name,test_path, params=test_params)
     assert isinstance(metrics,TrainingResults)
 
-def test_convert_ner_results(model_id=3, training_data_id=1, size_test=50):
+def test_convert_ner_results(model_id=base_model_id, training_data_id=1, size_test=50):
     ff = FlairFramework()
     ff.load_model(model_registry.list_model(model_id))
     rows = data_registry.load_training_data(training_data_id)[200:200+size_test]

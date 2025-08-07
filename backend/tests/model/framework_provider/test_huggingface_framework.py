@@ -21,27 +21,30 @@ possible_entities = ["PER","ROLE","ORG","LOC","WORK_OF_ART","NORP","EVENT","DATE
         they are using the datasets and models which are created in the model and data registry
         this allows the interaction of different functions to be tested
 """
+base_model_id = 1
+finetuned_model_id = 27
 # -------------------------------------
 # unit tests
 # -------------------------------------
-def test_load_model():
+def test_load_model(model_id1 = base_model_id):
+    false_model_id = 0
     hf = HuggingFaceFramework()
     with pytest.raises(TypeError):
         hf.load_model('test')
     #test false model
     with pytest.raises(TypeError):
-        hf.load_model(model_registry.list_model(3))
+        hf.load_model(model_registry.list_model(false_model_id))
     with patch ("app.model.framework_provider.huggingface_framework.AutoModelForTokenClassification.from_pretrained", return_value=1), \
         patch("app.model.framework_provider.huggingface_framework.AutoTokenizer.from_pretrained",return_value=1):
         assert hf.model is None
         assert hf.tokenizer is None
-        hf.load_model(model_registry.list_model(0))
+        hf.load_model(model_registry.list_model(model_id1))
         assert hf.model is not None
         assert hf.tokenizer is not None
 
-def test_tokenize_align_labels():
+def test_tokenize_align_labels(model_id= base_model_id):
     hf = HuggingFaceFramework()
-    base_hf_model = model_registry.list_model(0)
+    base_hf_model = model_registry.list_model(model_id)
     test_statement = Dataset.from_list([{"tokens":["Alexander","Hammer","feiert","Weihnachten"],"labels":["B-PER","I-PER","O","B-EVENT"]}])
     res =hf._tokenize_and_align_labels(test_statement, base_hf_model.storage_path)
     # the labels should have the same length as the splitted tokens
@@ -68,7 +71,7 @@ def test_convert_ner_results_adg_example():
 # -------------------------------------
 # integration tests
 # -------------------------------------
-def test_ner_pipeline(training_data_id=3, model_id=0, size_test=50):
+def test_ner_pipeline(training_data_id=3, model_id=base_model_id, size_test=50):
     hf = HuggingFaceFramework()
     run_pipeline_test(framework=hf,training_data_id=training_data_id, model_id=model_id, size_test=size_test)
 
@@ -144,7 +147,7 @@ def test_prepare_training_data(dataset_id=3, test_size = 150):
         """
 
 
-def test_finetune_ner_model(model_id=0, dataset_id=3, test_size=30):
+def test_finetune_ner_model(model_id=base_model_id, dataset_id=3, test_size=30):
     base_model = model_registry.list_model(model_id)
     rows = data_registry.load_training_data(dataset_id)[50:50+test_size]
     hf = HuggingFaceFramework()
@@ -157,7 +160,7 @@ def test_finetune_ner_model(model_id=0, dataset_id=3, test_size=30):
     # this tests _compute_metrics and _convert_metrics
     assert isinstance(metrics, TrainingResults)
 
-def test_convert_ner_results_not_adg_example(model_id=0,dataset_id =3, test_size=100):
+def test_convert_ner_results_not_adg_example(model_id=base_model_id,dataset_id =3, test_size=100):
     hf = HuggingFaceFramework()
     rows =data_registry.load_training_data(dataset_id)[120:120+test_size]
     texts = [row.text for row in rows]

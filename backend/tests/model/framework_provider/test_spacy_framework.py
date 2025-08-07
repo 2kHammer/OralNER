@@ -22,7 +22,9 @@ from tests.model.framework_provider.test_framework import run_pipeline_test
         they are using the datasets and models which are created in the model and data registry
         this allows the interaction of different functions to be tested
 """
-
+finetuned_model_id = 30
+base_model_id = 3
+default_model_id = 0
 # -------------------------------------
 # init & helpers
 # -------------------------------------
@@ -62,13 +64,13 @@ def test_load_model():
 def test_logic_finetune_ner_model():
     with patch("app.model.framework_provider.spacy_framework.SpacyFramework._finetune_transformer_spacy", return_value=(1,1)) as mock_transformer_finetune, \
         patch("app.model.framework_provider.spacy_framework.SpacyFramework._finetune_default_spacy", return_value=(2,2)) as mock_default_finetune:
-            sf = SpacyFramework()
-            base_model = model_registry.list_model(7)
-            assert sf.finetune_ner_model(base_model.storage_path, {}, {}, "test",MODIFIED_MODELS_PATH, {}) == (2,2)
-            base_model_transformer = model_registry.list_model(8)
-            assert sf.finetune_ner_model(base_model_transformer.storage_path, {}, {}, "test",MODIFIED_MODELS_PATH, {}) == (1,1)
-            base_model_transformer = model_registry.list_model(8)
-            assert sf.finetune_ner_model(base_model_transformer.storage_path, {}, {}, "test",MODIFIED_MODELS_PATH, {}) == (1,1)
+        sf = SpacyFramework()
+        base_model = model_registry.list_model(default_model_id)
+        assert sf.finetune_ner_model(base_model.storage_path, {}, {}, "test",MODIFIED_MODELS_PATH, {}) == (2,2)
+        base_model_transformer = model_registry.list_model(finetuned_model_id)
+        assert sf.finetune_ner_model(base_model_transformer.storage_path, {}, {}, "test",MODIFIED_MODELS_PATH, {}) == (1,1)
+        base_model_transformer = model_registry.list_model(base_model_id)
+        assert sf.finetune_ner_model(base_model_transformer.storage_path, {}, {}, "test",MODIFIED_MODELS_PATH, {}) == (1,1)
 
 def test_convert_ner_results_adg(dataset_id=3):
     rows =data_registry.load_training_data(dataset_id)
@@ -88,17 +90,17 @@ def test_get_correct_model_path():
         mock_isfile.side_effect = lambda p: p == (test_path + "/model-best/meta.json")
         assert test_path+ "/model-best" == sf._get_correct_model_path(test_path)
         new_test_path  = test_path + "/t/"
-        assert sf._get_correct_model_path(new_test_path) == None
+        assert sf._get_correct_model_path(new_test_path) is None
 
 # -------------------------------------
 # integration tests
 # -------------------------------------
-def test_ner_pipeline(model_id=8, training_data_id=2, size_test=50):
+def test_ner_pipeline(model_id=finetuned_model_id, training_data_id=2, size_test=50):
     sf = SpacyFramework()
     run_pipeline_test(framework=sf,training_data_id=training_data_id, model_id=model_id, size_test=size_test)
 
 
-def test_load_apply_ner_bert_german_model(model_id=8,dataset_id=2, test_size=100):
+def test_load_apply_ner_bert_german_model(model_id=finetuned_model_id,dataset_id=2, test_size=100):
     model_id = create_get_ner_bert_german(model_id)
     sf = spacy_framework.SpacyFramework()
     sf.load_model(model_registry.list_model(model_id))
@@ -121,9 +123,9 @@ def test_load_apply_ner_bert_german_model(model_id=8,dataset_id=2, test_size=100
     for i,m_token in enumerate(model_tokens):
         assert m_token == rows[i].tokens
 
-def test_check_if_the_model_tokens_are_the_same_as_the_default_tokens_for_all_datasets():
+def test_check_if_the_model_tokens_are_the_same_as_the_default_tokens_for_all_datasets(model=finetuned_model_id):
     for i in range(0,5):
-        test_load_apply_ner_bert_german_model(model_id=8, dataset_id=i)
+        test_load_apply_ner_bert_german_model(model_id=finetuned_model_id, dataset_id=i)
 
 def test_prepare_training_data(training_data_id=2, split_sen=True):
     rows = data_registry.load_training_data(training_data_id)
@@ -178,7 +180,7 @@ def doc_bin_files_test(rows):
     for key in counts_real.keys():
         assert  abs((counts.get(key,0) + counts_valid.get(key,0))-counts_real[key]) < 3
 
-def test_finetune(base_model_id=8, dataset_size=100):
+def test_finetune(base_model_id=finetuned_model_id, dataset_size=100):
     # test a very fast finetune
     base_model = model_registry.list_model(base_model_id)
     modified_model =model_registry.create_modified_model("TestSpacy",base_model)
@@ -188,7 +190,7 @@ def test_finetune(base_model_id=8, dataset_size=100):
     metrics, params = sf.finetune_ner_model(base_model.storage_path,None,None,modified_model.name,STORE_PATH+"/Temp",{"max_epochs":0,"max_steps":2,"eval_frequency":1})
     assert isinstance(metrics, TrainingResults)
 
-def test_finetune_default_spacy(base_model_id=7, dataset_size=100):
+def test_finetune_default_spacy(base_model_id=default_model_id, dataset_size=100):
     # test a very fast finetune
     base_model = model_registry.list_model(base_model_id)
     modified_model =model_registry.create_modified_model("TestSpacyDummy",base_model)
@@ -198,7 +200,7 @@ def test_finetune_default_spacy(base_model_id=7, dataset_size=100):
     metrics, args = sf.finetune_ner_model(base_model.storage_path,None,None,modified_model.name,modified_model.storage_path,None)
     assert isinstance(metrics, TrainingResults)
 
-def test_finetune_base(base_model_id=10, dataset_size=100):
+def test_finetune_base(base_model_id=base_model_id, dataset_size=100):
     # test a very fast finetune
     base_model = model_registry.list_model(base_model_id)
     modified_model =model_registry.create_modified_model("TestSpacy",base_model)
@@ -208,7 +210,7 @@ def test_finetune_base(base_model_id=10, dataset_size=100):
     metrics, params = sf.finetune_ner_model(base_model.storage_path,None,None,modified_model.name,STORE_PATH+"/Temp",{"max_epochs":0,"max_steps":2,"eval_frequency":1})
     assert isinstance(metrics, TrainingResults)
 
-def test_evaluate_finetune_spacy(model_id=7):
+def test_evaluate_finetune_spacy(model_id=default_model_id):
     ff = SpacyFramework()
     base_model = model_registry.list_model(model_id)
     metrics = ff._evaluate_transformer_model(base_model.storage_path)

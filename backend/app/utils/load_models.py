@@ -18,6 +18,7 @@ def init_store_models():
     Returns
     (List[NERModel]): list of the downloaded NER-Models
     """
+    mod_model_was_created = False
     # create path
     if not os.path.exists(STORE_PATH):
         os.makedirs(STORE_PATH)
@@ -27,6 +28,7 @@ def init_store_models():
         os.makedirs(BASE_MODELS_PATH)
     if not os.path.exists(MODIFIED_MODELS_PATH):
         os.makedirs(MODIFIED_MODELS_PATH)
+        mod_model_was_created = True
     if not os.path.exists(TRAININGSDATA_PATH):
         os.makedirs(TRAININGSDATA_PATH)
     if not os.path.exists(TRAININGSDATA_CONVERTED_PATH):
@@ -37,6 +39,11 @@ def init_store_models():
         os.makedirs(SPACY_TRAININGSDATA_PATH)
 
     models_for_metadata = []
+    
+    model_spacy_transformer_base = check_load_default_spacy_transformer(BASE_MODELS_PATH, mod_model_was_created)
+    if model_spacy_transformer_base is not None:
+        models_for_metadata.append(model_spacy_transformer_base)
+    
     model_spacy_default =check_load_default_spacy(BASE_MODELS_PATH)
     if model_spacy_default is not None:
         models_for_metadata.append(model_spacy_default)
@@ -116,5 +123,30 @@ def check_load_default_flair(base_model_path):
         return NERModel(1,flair_default,FrameworkNames.FLAIR,flair_default,flair_default_path)
     else:
         return None
+    
+def check_load_default_spacy_transformer(base_model_path, mod_models_created):
+    """
+    Check if default spacy transformer config file is in a under dic of the `base_model_path`
+
+    Parameters
+    base_model_path (str): the path where the base models are stored
+    
+    Returns 
+    (NERModel): returns the NER-Model,if the config file for spacy transformer is in an under dic of`base_model_path`
+    """
+    base_transformer_path = None
+    if mod_models_created:
+        for d in os.listdir(base_model_path):
+            full_path = os.path.join(base_model_path, d)
+            if os.path.isdir(full_path):
+                if os.path.exists(full_path+"/config.cfg"):
+                    base_transformer_path = full_path
+
+    if base_transformer_path is not None:
+        return NERModel(5, "spacy_bert_base", FrameworkNames.SPACY, "mschiesser/ner-bert-german", base_transformer_path)
+    else:
+        return None
+
+
 
 

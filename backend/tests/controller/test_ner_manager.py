@@ -13,6 +13,7 @@ from app.model.ner_model_provider.model_registry import model_registry
 from app.model.ner_model_provider.ner_model import ModelState
 
 
+test_model_id = 0
 # --------------------------------------
 # unit tests
 # --------------------------------------
@@ -48,7 +49,7 @@ def test_apply_ner(dataset_id = 2):
 
 def test_finetune_ner(dataset_id = 3):
     # test the finetuning for spacy "de_core_news_sm" -> fastest finetune
-    base_model_id = 7
+    base_model_id = test_model_id
     mod_model_id = None
     mod_model = None
     try:
@@ -73,7 +74,7 @@ def test_finetune_ner(dataset_id = 3):
             shutil.rmtree(path)
 
 def test_finetune_error():
-    base_model_id = 7
+    base_model_id = test_model_id
     mod_model_id = None
     try:
         with patch("app.controller.ner_manager.data_registry.load_training_data", return_value=None):
