@@ -2,8 +2,21 @@
 
 # ----------------------------------------------
 # Backend
+.idea/
 backend/.venv/
+backend/build_run_container.txt
+# store
 backend/app/store/
+#!backend/app/store/
+#!backend/app/store/NER-Models/
+!backend/app/store/NER-Models/base_models_metadata.json
+!backend/app/store/NER-Models/base_models_metadata_for_container.json
+#!backend/app/store/NER-Models/base/
+#!backend/app/store/NER-Models/base/spacy_bert_base/
+!backend/app/store/NER-Models/base/spacy_bert_base/config.cfg
+
+# Frontend
+frontend/build_run_container.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

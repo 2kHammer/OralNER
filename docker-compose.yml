@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  init-frontend-config:
+    image: busybox
+    volumes:
+      - frontend-config:/data
+    command: >
+      sh -c 'echo "{\"backendURL\": \"http://localhost:5000\"}" > /data/config.json && cat /data/config.json'
+    deploy:
+      restart_policy:
+        condition: none
+
+  backend:
+    image: hammeralex2000/oralner:latest
+    ports:
+      - "5000:5000"
+    networks:
+      - oralner-net
+    volumes:
+      - ./backend/app/store/NER-Models/base_models_metadata_for_container.json:/backend/app/store/NER-Models/models_metadata.json
+      - modified-models:/backend/app/store/NER-Models/modified
+
+  frontend:
+    image: hammeralex2000/oralner-website:latest
+    ports:
+      - "8080:80"
+    depends_on:
+      - init-frontend-config
+      - backend
+    volumes:
+      - frontend-config:/etc/nginx/config
+    networks:
+      - oralner-net
+
+volumes:
+  frontend-config:
+  modified-models:
+
+# for testing only, can ping the other container with ping backend
+networks:
+  oralner-net:
