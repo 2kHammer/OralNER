@@ -1,0 +1,38 @@
+[
+  {
+    "id": 0,
+    "state": "BASE",
+    "name": "de_core_news_sm",
+    "framework_name": "SPACY",
+    "base_model_name": "de_core_news_sm",
+    "storage_path": "app/store/NER-Models/base/de_core_news_sm",
+    "trainings": []
+  },
+  {
+    "id": 1,
+    "state": "BASE",
+    "name": "mschiesser/ner-bert-german",
+    "framework_name": "HUGGINGFACE",
+    "base_model_name": "mschiesser/ner-bert-german",
+    "storage_path": "app/store/NER-Models/base/mschiesser_ner-bert-german",
+    "trainings": []
+  },
+  {
+    "id": 2,
+    "state": "BASE",
+    "name": "flair/ner-german",
+    "framework_name": "FLAIR",
+    "base_model_name": "flair/ner-german",
+    "storage_path": "app/store/NER-Models/base/flair_ner-german",
+    "trainings": []
+  },
+  {
+    "id": 3,
+    "state": "BASE_NO_APPLYING",
+    "name": "spacy_bert_base",
+    "framework_name": "SPACY",
+    "base_model_name": "mschiesser/ner-bert-german",
+    "storage_path": "app/store/NER-Models/base/spacy_bert_base",
+    "trainings": []
+  }
+]

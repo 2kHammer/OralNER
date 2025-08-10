@@ -37,6 +37,8 @@ def init_store_models():
         os.makedirs(CONLL_PATH)
     if not os.path.exists(SPACY_TRAININGSDATA_PATH):
         os.makedirs(SPACY_TRAININGSDATA_PATH)
+    if not os.path.exists(STORE_TEMP_PATH):
+        os.makedirs(STORE_TEMP_PATH)
 
     models_for_metadata = []
     

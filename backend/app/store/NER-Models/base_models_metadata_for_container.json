@@ -1,0 +1,132 @@
+[
+    {
+        "id": 0,
+        "state": "BASE",
+        "name": "de_core_news_sm",
+        "framework_name": "SPACY",
+        "base_model_name": "de_core_news_sm",
+        "storage_path": "app/store/NER-Models/base/de_core_news_sm",
+        "trainings": []
+    },
+    {
+        "id": 1,
+        "state": "BASE",
+        "name": "mschiesser/ner-bert-german",
+        "framework_name": "HUGGINGFACE",
+        "base_model_name": "mschiesser/ner-bert-german",
+        "storage_path": "app/store/NER-Models/base/mschiesser_ner-bert-german",
+        "trainings": []
+    },
+    {
+        "id": 2,
+        "state": "BASE",
+        "name": "flair/ner-german",
+        "framework_name": "FLAIR",
+        "base_model_name": "flair/ner-german",
+        "storage_path": "app/store/NER-Models/base/flair_ner-german",
+        "trainings": []
+    },
+    {
+        "id": 3,
+        "state": "BASE_NO_APPLYING",
+        "name": "spacy_bert_base",
+        "framework_name": "SPACY",
+        "base_model_name": "mschiesser/ner-bert-german",
+        "storage_path": "app/store/NER-Models/base/spacy_bert_base",
+        "trainings": []
+    },
+    {
+        "id": 4,
+        "state": "MODIFIED",
+        "name": "dummy_test",
+        "framework_name": "SPACY",
+        "base_model_name": "de_core_news_sm",
+        "storage_path": "app/store/NER-Models/modified/dummy_test",
+        "trainings": [
+            {
+                "date": "2025.08.09-08.08.38",
+                "dataset_name": "adg2983",
+                "dataset_id": 3,
+                "trainings_args": {
+                    "epochs": 30,
+                    "minibatch_size": 16,
+                    "split_sentences": false
+                },
+                "metrics": {
+                    "f1": 0.5481481481481482,
+                    "precision": 0.6271186440677966,
+                    "recall": 0.4868421052631579,
+                    "duration": 55.40367865562439,
+                    "accuracy": null
+                }
+            }
+        ]
+    },
+    {
+        "id": 5,
+        "state": "MODIFIED",
+        "name": "spacy_bert_1",
+        "framework_name": "SPACY",
+        "base_model_name": "spacy_bert_base",
+        "storage_path": "app/store/NER-Models/modified/spacy_bert_1",
+        "trainings": [
+            {
+                "date": "2025.08.09-09.15.54",
+                "dataset_name": "adg1220",
+                "dataset_id": 2,
+                "trainings_args": {
+                    "max_epochs": 25,
+                    "max_steps": 0,
+                    "eval_frequency": 20,
+                    "learn_rate_warmup_steps": 20,
+                    "learn_rate_total_steps": 200,
+                    "split_sentences": false
+                },
+                "metrics": {
+                    "f1": 0.7894736842105263,
+                    "precision": 0.7692307692307693,
+                    "recall": 0.8108108108108109,
+                    "duration": 3494.1778440475464,
+                    "accuracy": null
+                }
+            }
+        ]
+    },
+    {
+        "id": 6,
+        "state": "MODIFIED",
+        "name": "flair_1",
+        "framework_name": "FLAIR",
+        "base_model_name": "flair/ner-german",
+        "storage_path": "app/store/NER-Models/modified/flair_1",
+        "trainings": [
+            {
+                "date": "2025.08.10-09.52.52",
+                "dataset_name": "adg1220",
+                "dataset_id": 2,
+                "trainings_args": {
+                    "learning_rate": 0.005,
+                    "mini_batch_size": 64,
+                    "max_epochs": 25,
+                    "split_sentences": false
+                },
+                "metrics": {
+                    "f1": 0.5281173594132029,
+                    "precision": 0.5806451612903226,
+                    "recall": 0.484304932735426,
+                    "duration": 5148.8015151023865,
+                    "accuracy": 0.406
+                }
+            }
+        ]
+    },
+    {
+        "id": 7,
+        "state": "IN_TRAINING",
+        "name": "hf_1",
+        "framework_name": "HUGGINGFACE",
+        "base_model_name": "mschiesser/ner-bert-german",
+        "storage_path": "app/store/NER-Models/modified/hf_1",
+        "trainings": []
+    }
+]
