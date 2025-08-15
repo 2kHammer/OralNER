@@ -36,11 +36,15 @@ export async function getModels(){
  * @returns {Object | undefined}
  */
 export async function getModel(id){
-    const res = await fetch(`${API_BASE_URL}/models/${id}`)
-    if(res.ok){
-        return await res.json()
-    } else {
-        return undefined
+    try{
+        const res = await fetch(`${API_BASE_URL}/models/${id}`)
+        if(res.ok){
+            return await res.json()
+        } else {
+            return undefined
+        }
+    } catch (error){
+        return undefined;
     }
 }
 

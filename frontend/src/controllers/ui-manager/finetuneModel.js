@@ -10,7 +10,7 @@ let modifiedModelName = "";
 //let modifiedModelId = -1;
 
 let timerId = undefined
-let intervallDuration = 10 *1000;
+let intervallDuration = 5 *1000;
 
 let finetuningContainer = document.getElementById("finetuningContainer")
 let modelSelectionContainer = document.getElementById("modelSelectionContainer")
@@ -121,24 +121,27 @@ function endCheckIfModelIsInFinetuning(){
  */
 export async function initFinetuningWindow() {
     try{
-    let models = await getModels();
-    if (models != undefined){
-        let modelVals = createModelTableVals(models, false)
-        createTable(modelVals, modelColumns, modelSelectionContainer, handleClickModelComparison)
-    }
+        let models = await getModels();
+        if (models != undefined){
+            let modelVals = createModelTableVals(models, false)
+            createTable(modelVals, modelColumns, modelSelectionContainer, handleClickModelComparison)
+        }
 
-    let datasets = await getTrainingsData()
-    if (datasets != undefined){
-        let datasetTableVals = createDatasetTableVals(datasets)
-        createTable(datasetTableVals,datasetColumns,datasetSelectionContainer, handleClickDatasetComparison)
-    }
+        let datasets = await getTrainingsData()
+        if (datasets != undefined){
+            let datasetTableVals = createDatasetTableVals(datasets)
+            createTable(datasetTableVals,datasetColumns,datasetSelectionContainer, handleClickDatasetComparison)
+        }
 
-    checkIfModelIsInFinetuning()
-    if (localStorage.getItem(keyModifiedModelId)){
-        startCheckIfModelIsInFinetuning();
-    }
+        checkIfModelIsInFinetuning()
+        if (localStorage.getItem(keyModifiedModelId)){
+            startCheckIfModelIsInFinetuning();
+        }
     } catch(e){
-        console.error("No Server connection for model finetuning")
+        console.error("No Server connection for model finetuning, reset local storage")
+        //reset the finetuning job if the server connection is lost
+        localStorage.clear()
+
     }
 }
 

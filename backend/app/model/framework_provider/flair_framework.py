@@ -33,7 +33,7 @@ class FlairFramework(Framework):
     @property
     def default_finetuning_params(self):
         return {
-            "learning_rate": 0.005,
+            "learning_rate": 0.0025,
             "mini_batch_size": 64,
             "max_epochs": 25
         }
