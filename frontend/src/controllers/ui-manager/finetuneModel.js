@@ -90,8 +90,14 @@ async function checkIfModelIsInFinetuning(){
             finetuningContainer.classList.add("window")
             buttonFinetuneModel.disabled = true;
         } else{
-            statusHeading.innerHTML = "Model " + modifiedModelId + " ist fertig feinangepasst"
-            statusHeading.style.color = "green"
+            let statusHeadingText = "Model " + modifiedModelId + " ist fertig feinangepasst"
+            let statusHeadingColor = "green"
+            if(res["state"] == "ERROR"){
+                statusHeadingText = "Fehler beim Feinanpassen des Models" + modifiedModelId
+                statusHeadingColor = "red"
+            }
+            statusHeading.innerHTML = statusHeadingText
+            statusHeading.style.color = statusHeadingColor
             finetuningContainer.classList.remove("window")
             localStorage.removeItem(keyModifiedModelId)
             endCheckIfModelIsInFinetuning();

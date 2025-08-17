@@ -80,8 +80,8 @@ export function createModelTableVals(models, applying){
   //filter the models
   let relevantModels = models.filter(model =>
     applying
-      ? model.state !== "IN_TRAINING" && model.state !== "BASE_NO_APPLYING"
-      : model.state !== "IN_TRAINING"
+      ? model.state !== "IN_TRAINING" && model.state !== "BASE_NO_APPLYING" && model.state !== "ERROR"
+      : model.state !== "IN_TRAINING"&& model.state !== "ERROR"
   );
 
   let modelVals = []
