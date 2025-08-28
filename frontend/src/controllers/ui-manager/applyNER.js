@@ -26,6 +26,7 @@ let entityLegend = document.getElementById("entityLegend")
 let applyNERTextStatus = document.getElementById("applyNERTextStatus")
 let splitSentencesCheckbox = document.getElementById("splitSentencesCheckbox")
 let buttonUploadNERFile = document.getElementById("buttonUploadNERFile")
+let helpMeButton = document.getElementById("helpMeButton")
 
 let tokens = undefined
 let labels = undefined
@@ -269,6 +270,34 @@ async function checkIfNerIsRunning() {
     
 }
 
+export function showHelpMe(){
+    textarea.innerHTML = ""
+    //fire event to disable button
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    let helpMeText = `Anleitung:
+    
+    Das System unterstützt verschiedene Funktionen, die unabhängig voneinander verwendet werden können. Im Folgenden werden diese in ihren zugehörigen Abschnitten erklärt:
+    1. Text einfügen oder transkribierter Interview hochladen
+            In diesem Abschnitt kann NER angewendet werden. Dazu gibt es zwei Möglichkeiten:
+                a) Anwendung auf Interviewdatei
+                    - Wählen Sie eine Interviewdatei über "Datei auswählen" aus
+                    - Über "Hochladen & Anwenden" wird der NER-Vorgang darauf gestartet
+                    - "Export Ergebnisse" stellt nach Abschluss die Ergebnisse zum Download bereit
+                b) Anwendung auf Text
+                    - Fügen sie einfach Text in dieses Textfeld ein
+                    - "Anwenden auf Text" startet den NER-Vorgang
+    2.  Aktuelles Modell
+            Darunter steht die Beschreibung des aktuell aktiven Modells.
+            - Über "Modell feinanpassen" kann ein bestehendes Modell feinangepasst werden
+            - Über "Modelle vergleichen" lassen sich die bestehenden Modelle vergleichen und eines als aktiv auswählen
+    3. Datensatz hochladen
+            In diesem Abschnitt kann ein Datensatz hochgeladen werden            
+Sonstiges:
+    - Die Anwendung akzeptiert nur Dateien im csv-Format des Archiv ''Deutsches Gedächtnis''
+    - Die Trennung in Sätze bedeutet, dass Interviewäußerungen einer Person nicht als Ganzes, sondern in einzelnen Sätzen an das Modell übergeben werden.`
+    textarea.setAttribute('data-placeholder', helpMeText)
+}
+
 
 /*
  * Event Listeners and applied functions 
@@ -340,7 +369,10 @@ buttonApplyNER.onclick = async () =>{
 
 
 buttonExportsResults.onclick = createExportFile
+helpMeButton.onclick=showHelpMe
 
 //check if NER is running after reload
+showHelpMe();
 checkIfNerIsRunning();
+
 

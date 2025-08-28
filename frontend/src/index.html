@@ -18,13 +18,14 @@
           <div class="content home-container maxheight">
             <div class="row1">
               <h1>OralNER</h1>
-              <h3>Text einfügen oder transkribiertes Interview hochladen</h3>
+              <h3>1. Text einfügen oder transkribiertes Interview hochladen</h3>
               <form id="uploadForm">
                 <input type="file" class="distance" id="fileInput" name="file"/>
                 <input type="checkbox" class="distance" id="splitSentencesCheckbox">Trennung in Sätze</input>
-                <div>
+                <div class="button-row">
                   <button id="buttonUploadNERFile" class="distance">Hochladen & Anwenden</button>
                   <button id="exportResults" class="distance" disabled>Export Ergebnisse</button>
+                  <button id="helpMeButton" type="button" class="distance button-right">Hilfe anzeigen</button>
                 </div>
               </form>
               <div id="nerState" class="distance"></div>
@@ -36,13 +37,13 @@
               <label id="applyNERTextStatus"></label>
             </div>
             <div class="row2-1">
-              <h3>Aktuelles Modell</h3>
+              <h3>2. Aktuelles Modell</h3>
               <p id="actualModel"></p>
               <button onclick="switchWindow('finetuning')">Modell feinanpassen</button>
               <button onclick="switchWindow('comparison')">Modelle vergleichen</button>
             </div>
             <div class="row2-2">
-              <h3>Datensatz hochladen: </h3>
+              <h3>3. Datensatz hochladen: </h3>
               <form id="datasetUploadForm">
                 <label for="datasetNameInput"> Datensatzname:</label>
                 <input type="text" id="datasetNameInput" class="distance" required>

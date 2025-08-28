@@ -81,6 +81,14 @@ input[type="file"]{
     margin-bottom: 0.5%;
 }
 
+.button-row{
+    display: flex;
+}
+.button-right{
+    margin-left: auto;
+    gap: 10px;
+}
+
 .table{
     overflow-y: auto; 
     border: 1px solid #ccc;
@@ -93,6 +101,13 @@ input[type="file"]{
     text-overflow: clip;
     resize: none;
     box-sizing: border-box;
+    white-space: pre-wrap;
+}
+
+.editable:empty::before {
+  content: attr(data-placeholder);
+  color: #888;
+  pointer-events: none;
 }
 
 .legend {

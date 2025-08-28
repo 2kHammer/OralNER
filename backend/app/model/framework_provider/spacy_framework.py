@@ -23,9 +23,6 @@ from app.utils.config import SPACY_TRAININGSDATA_PATH, BASE_MODELS_PATH, DEFAULT
             own component: would only be a wrapper for the transformers libary 
         - to use "mschiessner/ner-bert-german" a base model has to be trained
             - the ner component for the transformer-embeddings has to be trained
-            - for this I used Google Colab - to apply more steps with the gpu
-            - the config.cfg: app/store/Temp/GoogleColab/config.cfg
-            - the command to start the training: !python -m spacy train /content/drive/MyDrive/spacy/config.cfg --output /content/drive/MyDrive/spacy/Trainoutput --gpu-id 0
 '''
 # -------------------------------------
 # class SpacyFramework

@@ -2,6 +2,7 @@ import  {getActiveModel} from "../../services/api.js"
 import { initComparisonWindow } from "./modelComparison.js";
 import { initFinetuningWindow } from "./finetuneModel.js";
 import { resetUploadDataset } from "./uploadDataset.js";
+import { showHelpMe} from "./applyNER.js"
 
 /**
  * Switches to the window with `id`
